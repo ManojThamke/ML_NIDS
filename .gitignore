@@ -1,0 +1,24 @@
+# Ignore datasets
+data/*
+!data/.gitkeep
+
+# Ignore logs
+logs/*
+
+# Ignore virtual environment
+venv/
+
+# Ignore model files
+*.pkl
+*.joblib
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore node modules
+backend/node_modules/
+frontend/node_modules/
+
+# Ignore build files
+frontend/build/
