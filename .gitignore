@@ -1,9 +1,14 @@
-# Ignore datasets
+# Ignore datasets but keep folder
 data/*
 !data/.gitkeep
 
-# Ignore logs
+# Ignore logs but keep folder
 logs/*
+!logs/.gitkeep
+
+# Ignore models but keep folder
+detection-engine/models/*
+!detection-engine/models/.gitkeep
 
 # Ignore virtual environment
 venv/
@@ -22,3 +27,9 @@ frontend/node_modules/
 
 # Ignore build files
 frontend/build/
+backend/dist/
+
+# Ignore IDE/editor configs
+.vscode/
+.idea/
+*.swp
