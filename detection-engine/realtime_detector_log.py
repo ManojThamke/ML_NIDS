@@ -73,7 +73,7 @@ def on_packet(pkt):
         print(f"[{ts}] Error in prediction: {e}")
         return
     
-    label = "BENIGN" if pred == 0 else "ATTACK"
+    label = "BENIGN ✅" if pred == 0 else "ATTACK 🚨"
     prob_str = f"{prob:.4f}" if prob is not None else ""
 
     # print short
