@@ -13,7 +13,8 @@
 - Performed threshold tuning experiments (Day 13) — observed probabilities mostly low, highlighting need for richer features.
 
 ## Architecture
-![Architecture Diagram](docs\Diagrams\System Achitecture.jpg)
+![Architecture_Diagram](docs\Diagrams\System Achitecture.jpg)
+![Week_2_Flow](docs\Diagrams\Week2_Flow.png)
 
 **Pipeline:**
 Sniffer → Feature Extractor → ML Model (Random Forest) → Prediction → Logger (CSV).
