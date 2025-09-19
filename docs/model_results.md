@@ -16,8 +16,8 @@ Confusion matrix:
 
 Short pros / cons:
 
-- Pros: fast, interpretable coefficients, good baseline for linear separability.
-- Cons: limited if features are not linearly separable; sensitive to collinearity.
+- Pros: fast, interpretable, stable baseline.
+- Cons: weak on non-linear patterns.
 
 ## DecisionTree
 
@@ -33,10 +33,9 @@ Confusion matrix:
 
 Short pros / cons:
 
-- Pros: interpretable rules, captures non-linear interactions, no scaling required.
-- Cons: prone to overfitting; unstable to small data changes.
+- Pros: interpretable, captures non-linear interactions.
+- Cons: prone to overfitting.
 
 ---
 
-Notes:
-- These are baseline models. Next step: train stronger ensemble models (RF, XGB, LGBM) and compare.
+Notes: These are baselines. Next step: ensemble models (RF, GBM, etc.)
