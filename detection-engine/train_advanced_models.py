@@ -1,13 +1,3 @@
-# detection-engine/train_advanced_models.py
-"""
-Day 19 — Train advanced models: XGBoost and LightGBM (basic hyperparameter tuning)
-Outputs:
- - detection-engine/models/xgb_advanced.pkl
- - detection-engine/models/lgbm_advanced.pkl
- - detection-engine/models/advanced_metrics.json
- - docs/advanced_model_results.md
- - docs/advanced_comparison.png
-"""
 import os, json, joblib, time
 import numpy as np
 import pandas as pd
