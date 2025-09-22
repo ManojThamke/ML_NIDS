@@ -1,0 +1,10 @@
+model,accuracy,precision,recall,f1,roc_auc,train_time_s,inference_time_s,avg_predict_ms_per_sample,metrics_file,model_pretty
+stacked_ensemble,0.9979494621876396,0.9945761234488671,0.9950073906908439,0.994791710328557,0.9999573641442339,5582.705832719803,15.7416410446167,,detection-engine\models\stacked_ensemble_metrics.json,Stacked Ensemble
+mlp,0.9822414854647519,0.9431849125891808,0.9680835135086574,0.955472032708554,0.997129421541303,1722.3545591831207,0.8790497779846191,,detection-engine\models\mlp_metrics.json,Mlp
+svm,0.8882333333333333,0.9968835216205687,0.4334349593495935,0.6041789635226066,0.95394335527695,1195.6200168132782,28.89443826675415,,detection-engine\models\svm_metrics.json,Svm
+naive_bayes,0.35831438507651403,0.23011200302056328,0.9636395215821091,0.3715095075163853,0.8212263262920604,1.3195455074310303,,,detection-engine\models\naive_bayes_metrics.json,Naive Bayes
+realtime_rf,0.9927071312633861,0.9802327387423984,0.9827630609641426,,,,,,detection-engine\models\realtime_rf_metrics.json,Realtime Rf
+advanced,,,,,,,,,detection-engine\models\advanced_metrics.json,Advanced
+baseline,,,,,,,,,detection-engine\models\baseline_metrics.json,Baseline
+ensemble,,,,,,,,,detection-engine\models\ensemble_metrics.json,Ensemble
+knn,,,,,,,,,detection-engine\models\knn_metrics.json,Knn
