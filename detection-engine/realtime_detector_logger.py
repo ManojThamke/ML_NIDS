@@ -6,7 +6,7 @@
    1. Test CSV mode (--test_csv logs/realtime_features.csv)
    2. Live sniff mode (--iface "Wi-Fi" --filter "tcp or udp")
 python detection-engine\realtime_detector_logger.py --model detection-engine/models/lightgbm_advanced.pkl --iface "Wi-Fi" --filter "tcp or udp" --threshold 0.9 --log logs/realtime_detection_live_lgb.csv
-python detection-engine\realtime_detector_logger.py --model detection-engine/models/realtime_rf.pkl --iface "Wi-Fi" --threshold 0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9 --log logs/realtime_detection_live_rf.csv
+python detection-engine\realtime_detector_logger_multi_thresh.py --model detection-engine/models/realtime_rf.pkl --iface "Wi-Fi" --thresholds 0.5,0.7,0.9 --log logs/realtime_detection_live_rf_multi.csv
 python detection-engine\realtime_detector_logger.py --model detection-engine/models/xgboost_advanced.pkl --iface "Wi-Fi" --filter "tcp or udp" --threshold 0.9 --log logs/realtime_detection_live_xgb.csv
 xgboost_advanced
 📂 Logs are always written to CSV (default: logs/realtime_detection.csv).
