@@ -2,6 +2,13 @@
 """
 Day 31 — realtime_detector_thresh.py with reporting
 
+# Run as Administrator for Windows live sniffing
+python detection-engine\realtime_detector_thresh.py --model rf --iface "Wi-Fi" --filter "tcp or udp" --thresholds 0.5,0.7,0.9 --log logs\realtime_predictions_live_rf_thresh.csv --report-out docs\week5\day31_rf_threshold_live_report.md
+python detection-engine\realtime_detector_thresh.py --model xgb --iface "Wi-Fi" --filter "tcp or udp" --thresholds 0.5,0.7,0.9 --log logs\realtime_predictions_live_xgb_thresh.csv --report-out docs\week5\day31_xgb_threshold_live_report.md
+python detection-engine\realtime_detector_thresh.py --model lgb --iface "Wi-Fi" --filter "tcp or udp" --thresholds 0.5,0.7,0.9 --log logs\realtime_predictions_live_lgb_thresh.csv --report-out docs\week5\day31_lgb_threshold_live_report.md
+# Press Ctrl+C when done — the report will be written automatically.
+
+
 Features:
  - Load model bundles (rf/xgb/lgb or explicit --model-path).
  - Compute probabilities with model.predict_proba (or decision_function->sigmoid).
