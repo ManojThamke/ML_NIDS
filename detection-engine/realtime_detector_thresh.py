@@ -1,29 +1,16 @@
 #!/usr/bin/env python3
 """
-Day 31 — realtime_detector_thresh.py
+Day 31 — realtime_detector_thresh.py with reporting
 
 Features:
- - Load model bundles like Day 30 (rf/xgb/lgb or explicit --model-path).
- - Compute probabilities with model.predict_proba (or decision_function -> sigmoid).
+ - Load model bundles (rf/xgb/lgb or explicit --model-path).
+ - Compute probabilities with model.predict_proba (or decision_function->sigmoid).
  - Evaluate multiple thresholds (default: 0.5,0.7,0.9).
- - Print per-packet row: pred, prob, alerts for each threshold.
- - Save CSV log with columns: timestamp,row,src,dst,proto,pred,prob,alert_<t>,...,features
-
-Usage (test CSV):
-  python detection-engine\\realtime_detector_thresh.py --model lgb \
-      --test_csv logs/realtime_features.csv \
-      --thresholds 0.5,0.7,0.9 \
-      --log logs/realtime_predictions_thresh_lgb.csv
-
-Usage (live sniff):
-  python detection-engine\\realtime_detector_thresh.py --model rf \
-      --iface "Wi-Fi" --filter "tcp or udp" \
-      --thresholds 0.5,0.7,0.9 \
-      --log logs/realtime_predictions_thresh_rf.csv
-
-Notes:
- - Model bundle should be joblib.dump({"model":..., "scaler":..., "feature_cols": [...]})
- - For live sniffing run PowerShell/CMD as Administrator on Windows.
+ - Print per-packet row and save CSV rows.
+ - Optionally create a Markdown report summary (--report-out) after run or on Ctrl+C.
+ python detection-engine\realtime_detector_thresh.py --model lgb --test_csv logs\realtime_features.csv --thresholds 0.5,0.7,0.9 --log logs\realtime_predictions_thresh_lgb.csv --report-out docs\week5\day31_lgb_threshold_report.md
+ python detection-engine\realtime_detector_thresh.py --model xgb --test_csv logs\realtime_features.csv --thresholds 0.5,0.7,0.9 --log logs\realtime_predictions_thresh_xgb.csv --report-out docs\week5\day31_xgb_threshold_report.md
+ python detection-engine\realtime_detector_thresh.py --model rf --test_csv logs\realtime_features.csv --thresholds 0.5,0.7,0.9 --log logs\realtime_predictions_thresh_rf.csv --report-out docs\week5\day31_rf_threshold_report.md
 """
 import os
 import sys
@@ -33,6 +20,7 @@ import json
 import joblib
 import math
 import pandas as pd
+from collections import Counter
 
 # optional scapy
 try:
@@ -56,9 +44,7 @@ except Exception:
 def pretty_ts():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# ----------------------------------------------------------------------
-# Model discovery / loading (same logic as Day 30)
-# ----------------------------------------------------------------------
+# ---------------- model discovery / wrapper ----------------
 def find_model_path(model_choice, explicit_path=None):
     if explicit_path:
         if os.path.exists(explicit_path):
@@ -119,13 +105,12 @@ class ModelWrapper:
             return 0.0
 
     def prepare(self, features: dict):
-        """Return 1-row DataFrame with columns in model.feature_cols order if available."""
         if self.feature_cols:
             row = []
             for c in self.feature_cols:
                 v = features.get(c, None)
                 if v is None:
-                    # match by case-insensitive keys if possible
+                    # case-insensitive key match
                     for k in features:
                         if str(k).strip().lower() == str(c).strip().lower():
                             v = features[k]
@@ -137,13 +122,8 @@ class ModelWrapper:
         return df
 
     def predict_with_proba(self, features: dict):
-        """
-        Return (pred, prob) where prob is probability of class 1 if available,
-        otherwise decision_function -> sigmoid fallback, else None.
-        """
         X = self.prepare(features)
         X_proc = None
-        # Try scaler first, keep DataFrame columns when possible (helps LGBM / pipelines)
         try:
             if self.scaler is not None:
                 arr = self.scaler.transform(X)
@@ -154,13 +134,8 @@ class ModelWrapper:
             else:
                 X_proc = X
         except Exception:
-            # fallback to DataFrame / ndarray
-            try:
-                X_proc = X
-            except Exception:
-                X_proc = X.values
+            X_proc = X
 
-        # prediction
         try:
             pred = int(self.model.predict(X_proc)[0])
         except Exception as e:
@@ -178,23 +153,19 @@ class ModelWrapper:
 
         return pred, prob
 
-# ----------------------------------------------------------------------
-# Logging helpers
-# ----------------------------------------------------------------------
+# ---------------- logging & CSV loader ----------------
 def write_row(log_file, row: dict):
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     df = pd.DataFrame([row])
     header = not os.path.exists(log_file)
     df.to_csv(log_file, mode="a", header=header, index=False, encoding="utf-8")
 
-# Robust CSV loader (handles 'features' json or header mapping)
 def load_features_for_model(csv_path, model_feature_cols=None, verbose=False):
     try:
         df = pd.read_csv(csv_path, low_memory=False)
     except Exception:
         df = pd.read_csv(csv_path, low_memory=False, engine="python")
 
-    # case A: explicit 'features' column holding JSON
     if "features" in df.columns:
         out = []
         for v in df["features"].fillna("").astype(str):
@@ -215,12 +186,10 @@ def load_features_for_model(csv_path, model_feature_cols=None, verbose=False):
             out.append(parsed if isinstance(parsed, dict) else {})
         return out
 
-    # case B: header names seem textual -> treat header as feature map
     cols = df.columns.tolist()
     if any(any(ch.isalpha() for ch in str(c)) for c in cols):
         return [r.dropna().to_dict() for _, r in df.iterrows()]
 
-    # case C: no textual header -> map by position to model_feature_cols if provided
     raw = pd.read_csv(csv_path, header=None, low_memory=False)
     if model_feature_cols and raw.shape[1] == len(model_feature_cols):
         out = []
@@ -237,20 +206,96 @@ def load_features_for_model(csv_path, model_feature_cols=None, verbose=False):
             out.append(d)
         return out
 
-    # fallback
     return [r.dropna().to_dict() for _, r in df.iterrows()]
 
-# ----------------------------------------------------------------------
-# Modes: test (CSV) and live (sniff)
-# ----------------------------------------------------------------------
-def run_test_mode(wrapper: ModelWrapper, csv_path, thresholds, log_file, verbose=False):
+# ---------------- report generator ----------------
+def summarize_log_csv(log_file, thresholds, md_out=None):
+    if not os.path.exists(log_file):
+        print(f"[Report] log file not found: {log_file}")
+        return None
+    df = pd.read_csv(log_file, low_memory=False)
+    total = len(df)
+    out = {
+        "log_file": log_file,
+        "total_rows": total,
+        "thresholds": {},
+    }
+    for t in thresholds:
+        key = f"alert_{t:.2f}"
+        if key in df.columns:
+            cnt = int(df[key].sum())
+        else:
+            # try computing from 'prob' column
+            if "prob" in df.columns:
+                cnt = int((df["prob"].fillna(0).astype(float) >= t).sum())
+            else:
+                cnt = 0
+        rate = cnt / total if total > 0 else 0.0
+        out["thresholds"][f"{t:.2f}"] = {"alerts": cnt, "rate": rate}
+
+    # top destination ports for alerted rows (best-effort)
+    dest_col_candidates = ["Destination Port", "dst_port", "dst", "dport", "dst_port:"]  # flexible
+    top_ports = Counter()
+    if "features" in df.columns:
+        for v in df["features"].dropna().astype(str):
+            try:
+                parsed = json.loads(v)
+            except Exception:
+                try:
+                    parsed = json.loads(v.replace("'", '"'))
+                except Exception:
+                    parsed = {}
+            if not isinstance(parsed, dict):
+                continue
+            # look for common keys
+            for k in ("Destination Port", "Dest Port", "dport", "dst_port", "dst"):
+                if k in parsed:
+                    try:
+                        top_ports[int(parsed[k])]
+                    except Exception:
+                        pass
+            # fallback: if numeric keys exist, attempt to find a likely port (53,443, etc)
+            for kk, vv in parsed.items():
+                try:
+                    ival = int(float(vv))
+                    if 0 <= ival <= 65535:
+                        top_ports[ival] += 1
+                except Exception:
+                    continue
+    top = top_ports.most_common(10)
+
+    out["top_ports_alerts"] = top
+    # write markdown if requested
+    if md_out:
+        os.makedirs(os.path.dirname(md_out), exist_ok=True)
+        with open(md_out, "w", encoding="utf-8") as fh:
+            fh.write(f"# Realtime Predictions Summary\n\n")
+            fh.write(f"- Log file: `{log_file}`\n")
+            fh.write(f"- Generated: {pretty_ts()}\n\n")
+            fh.write(f"## Totals\n\n- Rows: {total}\n\n")
+            fh.write("## Alerts by threshold\n\n")
+            fh.write("| threshold | alerts | alert_rate |\n")
+            fh.write("|---:|---:|---:|\n")
+            for thr, info in out["thresholds"].items():
+                fh.write(f"| {thr} | {info['alerts']} | {info['rate']:.6f} |\n")
+            fh.write("\n## Top destination ports seen in features (best-effort)\n\n")
+            if top:
+                fh.write("| port | count |\n|---:|---:|\n")
+                for p, c in top:
+                    fh.write(f"| {p} | {c} |\n")
+            else:
+                fh.write("No port info parsed from features.\n")
+        print(f"[Report] Markdown summary written to: {md_out}")
+    return out
+
+# ---------------- modes ----------------
+def run_test_mode(wrapper: ModelWrapper, csv_path, thresholds, log_file, report_out=None, verbose=False):
     feats = load_features_for_model(csv_path, model_feature_cols=wrapper.feature_cols, verbose=verbose)
     print(f"[Test] rows loaded: {len(feats)} from {csv_path}")
     for i, f in enumerate(feats):
         ts = pretty_ts()
         try:
             pred, prob = wrapper.predict_with_proba(f)
-            # build alert flags
             row = {
                 "timestamp": ts,
                 "row": i,
@@ -261,15 +306,19 @@ def run_test_mode(wrapper: ModelWrapper, csv_path, thresholds, log_file, verbose
                 key = f"alert_{t:.2f}"
                 row[key] = int(1 if (prob is not None and prob >= t) else 0)
             row["features"] = json.dumps(f, ensure_ascii=False)
-            print(f"[{ts}] row={i} pred={pred} prob={prob} " + " ".join([f"{k}={row[f'alert_{k:.2f}']}" for k in thresholds]))
+            if verbose:
+                print(f"[{ts}] row={i} pred={pred} prob={prob} " + " ".join([f"{t:.2f}:{row[f'alert_{t:.2f}']}" for t in thresholds]))
             write_row(log_file, row)
         except Exception as e:
             print(f"[{ts}] ERROR row {i}: {e}")
 
-def run_live_mode(wrapper: ModelWrapper, extractor, thresholds, log_file, iface=None, bpf=None, count=0, verbose=False):
+    if report_out:
+        summarize_log_csv(log_file, thresholds, md_out=report_out)
+        print("[Test] report written.")
+
+def run_live_mode(wrapper: ModelWrapper, extractor, thresholds, log_file, report_out=None, iface=None, bpf=None, count=0, verbose=False):
     if not SCAPY:
         raise RuntimeError("Scapy not available for live mode. Install scapy to run live capture.")
-
     print(f"[Live] model={os.path.basename(wrapper.path)} iface={iface or 'default'} filter={bpf or 'none'} thresholds={[f'{t:.2f}' for t in thresholds]}")
     def on_packet(pkt):
         ts = pretty_ts()
@@ -309,16 +358,25 @@ def run_live_mode(wrapper: ModelWrapper, extractor, thresholds, log_file, iface=
             row["features"] = json.dumps(features, ensure_ascii=False)
             dp = features.get("Destination Port", "")
             sp = features.get("Source Port", "")
-            print(f"[{ts}] {proto} {src}:{sp} -> {dst}:{dp}  pred={pred} prob={prob} " + " ".join([f"{k}={row[f'alert_{k:.2f}']}" for k in thresholds]))
+            print(f"[{ts}] {proto} {src}:{sp} -> {dst}:{dp}  pred={pred} prob={prob} " + " ".join([f"{t:.2f}:{row[f'alert_{t:.2f}']}" for t in thresholds]))
             write_row(log_file, row)
         except Exception as e:
             print(f"[{ts}] ERROR predicting: {e}")
 
-    sniff(iface=iface, prn=on_packet, store=False, count=count, filter=bpf)
+    try:
+        sniff(iface=iface, prn=on_packet, store=False, count=count, filter=bpf)
+    except KeyboardInterrupt:
+        print("\n[Live] stopped by user (KeyboardInterrupt).")
+        if report_out:
+            summarize_log_csv(log_file, thresholds, md_out=report_out)
+            print("[Live] report written on stop.")
+    except Exception as e:
+        print("[Live] sniff error:", e)
+        if report_out:
+            summarize_log_csv(log_file, thresholds, md_out=report_out)
+            print("[Live] report written on error.")
 
-# ----------------------------------------------------------------------
-# CLI
-# ----------------------------------------------------------------------
+# ---------------- CLI ----------------
 def parse_thresholds(s: str):
     parts = [p.strip() for p in s.split(",") if p.strip()]
     vals = []
@@ -339,6 +397,7 @@ def main():
     p.add_argument("--thresholds", default="0.5,0.7,0.9", help="Comma-separated thresholds (0.0-1.0). Example: 0.5,0.7,0.9")
     p.add_argument("--test_csv", help="Run in test mode using features CSV (no sniff).")
     p.add_argument("--log", default=os.path.join(ROOT, "logs", "realtime_predictions_thresh.csv"), help="CSV log file to append predictions")
+    p.add_argument("--report-out", help="Optional markdown report output (writes at end of test mode or on Ctrl+C for live mode)")
     p.add_argument("--iface", help="Interface name for live sniffing (optional)")
     p.add_argument("--filter", dest="bpf", help="BPF filter string for sniff (e.g. 'tcp or udp')", default=None)
     p.add_argument("--count", type=int, default=0, help="Packet count (0 = infinite)")
@@ -352,7 +411,6 @@ def main():
         print("Invalid thresholds:", e)
         sys.exit(1)
 
-    # find model
     try:
         model_path = find_model_path(args.model, args.model_path)
     except Exception as e:
@@ -365,24 +423,17 @@ def main():
         print("Failed to create model wrapper:", e)
         sys.exit(1)
 
-    # test CSV mode
     if args.test_csv:
-        run_test_mode(wrapper, args.test_csv, thresholds, args.log, verbose=args.verbose)
-        print("Test mode finished.")
+        run_test_mode(wrapper, args.test_csv, thresholds, args.log, report_out=args.report_out, verbose=args.verbose)
+        print("[Test] finished.")
         return
 
-    # live mode needs extractor
     if FeatureExtractor is None and not args.no_extractor:
         print("feature_extractor not found — cannot run live mode. Use --no_extractor for test csv only.")
         sys.exit(1)
 
     extractor = None if args.no_extractor else FeatureExtractor()
-    try:
-        run_live_mode(wrapper, extractor, thresholds, args.log, iface=args.iface, bpf=args.bpf, count=args.count, verbose=args.verbose)
-    except KeyboardInterrupt:
-        print("\nStopped by user (KeyboardInterrupt).")
-    except Exception as e:
-        print("Live mode error:", e)
+    run_live_mode(wrapper, extractor, thresholds, args.log, report_out=args.report_out, iface=args.iface, bpf=args.bpf, count=args.count, verbose=args.verbose)
 
 if __name__ == "__main__":
     main()
