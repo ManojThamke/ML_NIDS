@@ -14,6 +14,8 @@ Usage (test CSV):
  --thresholds 0.5,0.7,0.9 \
  --log logs/realtime_detection_test_rf_multi.csv
 
+python detection-engine\realtime_detector_logger_multi_thresh.py --model detection-engine/models/realtime_rf.pkl --test_csv logs/realtime_features.csv --thresholds 0.5,0.7,0.9 --log logs/realtime_detection_test_rf_multi.csv
+
 Usage (live sniff):
   (Run terminal as Admin on Windows)
   python detection-engine\realtime_detector_logger_multi_thresh.py \
