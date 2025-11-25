@@ -198,3 +198,4 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("\n🛑 Interrupted by user. Log saved safely.")
+# python .\detection-engine\realtime_detector_multi.py --models lgb,rf,xgb,svm --model-paths "detection-engine\models\lightgbm_advanced.pkl,detection-engine\models\realtime_rf.pkl,detection-engine\models\xgboost_advanced.pkl,detection-engine\models\svm.pkl" --iface "Wi-Fi" --filter "tcp or udp" --agg max --smooth 3 --threshold 0.35 --log "logs\realtime_predictions_ensemble_live.csv" --verbose
