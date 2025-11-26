@@ -6,6 +6,8 @@ data/*
 logs/*
 !logs/.gitkeep
 
+release_phase1/
+
 # Ignore models but keep folder
 detection-engine/models/*
 !detection-engine/models/.gitkeep
@@ -33,3 +35,7 @@ backend/dist/
 .vscode/
 .idea/
 *.swp
+
+release_phase1/
+release_phase1_demo_results.zip
+release_phase1.zip
