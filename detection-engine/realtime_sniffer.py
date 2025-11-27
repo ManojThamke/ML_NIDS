@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-realtime_sniffer.py — Real-time sniffer + feature extraction + optional live model prediction
+realtime_sniffer.py — Real-time sniffer + phase-2 feature extraction + optional live model prediction
 
-Features:
- - Extracts per-flow features via feature_extractor.FeatureExtractor (same as before).
- - Logs feature rows to CSV when --log-features provided (same columns).
- - Optional: load a model bundle (joblib) and show live prediction label/prob with icon.
- - Small improvements: stable datetime, background cleanup, min-packets before logging.
- - Console shows either plain packet summary or packet summary + model label/prob.
+Phase-2 updates:
+ - Accepts advanced FeatureExtractor (many features).
+ - Logs features as JSON (safe) or optionally as a flattened CSV (--flat).
+ - Uses model.feature_cols if available for flat CSV order.
+ - Keeps min-packets gating, background cleanup, and optional model prediction.
 
- python detection-engine/realtime_sniffer.py --model-path detection-engine/models/lightbgm_advanced.pkl --iface "Wi-Fi" --filter "tcp or udp" --threshold 0.4 --log-features logs/realtime_features.csv --verbose  
-
-Save as: detection-engine/realtime_sniffer.py
+Usage examples:
+  python detection-engine/realtime_sniffer.py --log-features logs/realtime_features.csv --iface "Wi-Fi" --filter "tcp or udp"
+  python detection-engine/realtime_sniffer.py --log-features logs/realtime_features_flat.csv --flat --iface "Wi-Fi"
+  python detection-engine/realtime_sniffer.py --model-path detection-engine/models/realtime_rf.pkl --threshold 0.4 --log-features logs/realtime_features.csv --verbose
 """
 from scapy.all import sniff, IP, TCP, UDP, ICMP
 import datetime
@@ -25,12 +25,11 @@ import math
 import joblib
 import pandas as pd
 
-# allow running from project root or detection engine dir:
 HERE = os.path.dirname(__file__)
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-# local import (feature_extractor.py)
+# Import the Phase-2 extractor you provided
 try:
     from feature_extractor import FeatureExtractor
 except Exception as e:
@@ -78,10 +77,9 @@ def pkt_summary(pkt):
     line = f"[{ts}] {proto_field} {src_s}:{sport_s} -> {dst_s}:{dport_s}"
     return line
 
-# ---------- feature extractor ----------
+# ---------- extractor + flow gating ----------
 extractor = FeatureExtractor()
 
-# track flow counts for min-packets thresholding
 flows_seen = {}
 
 def make_flow_key(pkt):
@@ -99,19 +97,7 @@ def make_flow_key(pkt):
         dport = getattr(pkt[UDP], "dport", "") or ""
     return (str(ip.src), str(sport), str(ip.dst), str(dport), str(proto))
 
-def ensure_csv_header(path, header_line):
-    d = os.path.dirname(path)
-    if d:
-        os.makedirs(d, exist_ok=True)
-    if not os.path.exists(path) or os.path.getsize(path) == 0:
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(header_line + "\n")
-
-def safe_get(features, key, default=None):
-    if not features:
-        return default
-    return features.get(key, default)
-
+# ---------- background cleanup ----------
 def background_cleanup(interval_seconds):
     if interval_seconds <= 0:
         return
@@ -119,19 +105,14 @@ def background_cleanup(interval_seconds):
         try:
             time.sleep(interval_seconds)
             try:
-                extractor.clear_older_than(seconds=interval_seconds * 2 if interval_seconds > 1 else 300)
+                extractor.clear_older_than(seconds=max(300, interval_seconds*2))
             except Exception:
                 pass
         except Exception:
             continue
 
-# ---------- model support (optional) ----------
+# ---------- simple model wrapper ----------
 class SimpleModelWrapper:
-    """
-    Lightweight wrapper expecting joblib bundle with keys:
-      {"model": <estimator|pipeline>, "scaler": optional, "feature_cols": [...]}
-    Wrapper will attempt to preserve column names for models that expect them.
-    """
     def __init__(self, path, verbose=False):
         if not os.path.exists(path):
             raise FileNotFoundError(path)
@@ -160,7 +141,7 @@ class SimpleModelWrapper:
         if self.feature_cols:
             row = []
             for c in self.feature_cols:
-                # case-insensitive lookup fallback
+                # case-insensitive fallback
                 if c in features:
                     v = features[c]
                 else:
@@ -199,22 +180,49 @@ class SimpleModelWrapper:
             prob = None
         return pred, prob
 
-# ---------- file write helper ----------
-def append_features_csv(path, ts, dest_port, flow_duration, fwd_min, pkt_std):
-    ensure_csv_header(path, "timestamp,Destination Port,Flow Duration,Fwd Packet Length Min,Packet Length Std")
-    try:
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(f"{ts},{dest_port},{flow_duration:.6f},{fwd_min},{pkt_std:.6f}\n")
-    except Exception as e:
-        print(f"[{pretty_time()}] ERROR writing features CSV: {e}")
+# ---------- CSV helpers ----------
+def ensure_dir_for(path):
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+
+def append_json_row(path, ts, features):
+    ensure_dir_for(path)
+    header = not os.path.exists(path) or os.path.getsize(path) == 0
+    with open(path, "a", encoding="utf-8") as fh:
+        if header:
+            fh.write("timestamp,features\n")
+        # write JSON safely, escape double quotes inside JSON by using json.dumps for the features field
+        row_json = json.dumps(features, ensure_ascii=False)
+        # ensure to escape quotes within CSV properly by wrapping in double quotes
+        fh.write(f"{ts},\"{row_json.replace('\"', '\"\"')}\"\n")
+
+def write_flat_header(path, columns):
+    ensure_dir_for(path)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(",".join(columns) + "\n")
+
+def append_flat_row(path, columns, features):
+    ensure_dir_for(path)
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        write_flat_header(path, columns)
+    row = []
+    for c in columns:
+        v = features.get(c, "")
+        if isinstance(v, str):
+            # escape commas / newlines
+            v = v.replace("\n", " ").replace("\r", " ")
+            v = v.replace(",", ";")
+        row.append(str(v))
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(",".join(row) + "\n")
 
 # ---------- main per-packet handler ----------
 def on_packet(pkt, show_features=False, log_features=None, min_packets=2,
-              debug=False, model_wrapper=None, threshold=0.5):
+              debug=False, model_wrapper=None, threshold=0.5, flat=False, flat_columns=None):
     try:
-        # print base summary
         base_line = pkt_summary(pkt)
-        label_line = ""  # will be set if we have model
+        label_line = ""
         features = None
         try:
             features = extractor.process_packet(pkt)
@@ -223,7 +231,7 @@ def on_packet(pkt, show_features=False, log_features=None, min_packets=2,
                 print(f"[{pretty_time()}] WARN feature extraction: {e}")
             features = None
 
-        # If model present, predict and show icon + label
+        # model live prediction
         if model_wrapper and features:
             try:
                 pred, prob = model_wrapper.predict_with_proba(features)
@@ -238,10 +246,8 @@ def on_packet(pkt, show_features=False, log_features=None, min_packets=2,
             except Exception as e:
                 label_line = f" ⚠️ pred-error:{e}"
 
-        # print combined
+        # print to console
         print(base_line + label_line)
-
-        # optionally print feature contents
         if features and show_features:
             try:
                 feat_str = ", ".join(f"{k}={v}" for k, v in features.items())
@@ -249,7 +255,7 @@ def on_packet(pkt, show_features=False, log_features=None, min_packets=2,
             except Exception:
                 pass
 
-        # logging features to CSV (only for TCP/UDP to reduce noise)
+        # logging (only for TCP/UDP)
         if log_features:
             if not (TCP in pkt or UDP in pkt):
                 return
@@ -264,47 +270,45 @@ def on_packet(pkt, show_features=False, log_features=None, min_packets=2,
             if seen < (min_packets or 1):
                 return
 
-            # prefer feature values but fallback to packet fields
-            dest_port = safe_get(features, "Destination Port", "")
-            if dest_port in (None, ""):
-                if TCP in pkt:
-                    dest_port = getattr(pkt[TCP], "dport", "") or ""
-                elif UDP in pkt:
-                    dest_port = getattr(pkt[UDP], "dport", "") or ""
-                else:
-                    dest_port = ""
-
-            try:
-                flow_duration = float(safe_get(features, "Flow Duration", 0.0) or 0.0)
-            except Exception:
-                flow_duration = 0.0
-            try:
-                fwd_min = int(safe_get(features, "Fwd Packet Length Min", 0) or 0)
-            except Exception:
-                fwd_min = 0
-            try:
-                pkt_std = float(safe_get(features, "Packet Length Std", 0.0) or 0.0)
-            except Exception:
-                pkt_std = 0.0
-
             ts = pretty_time()
-            if debug:
-                print(f"[DEBUG] write: {ts},{dest_port},{flow_duration:.6f},{fwd_min},{pkt_std:.6f}")
-            append_features_csv(log_features, ts, dest_port, flow_duration, fwd_min, pkt_std)
+
+            # default JSON logging (safe and recommended)
+            if not flat:
+                append_json_row(log_features, ts, features or {})
+            else:
+                # flat mode: need a column list
+                cols = flat_columns
+                if cols is None and model_wrapper and model_wrapper.feature_cols:
+                    cols = ["timestamp"] + list(model_wrapper.feature_cols)
+                if cols is None and features:
+                    # first observed key ordering
+                    cols = ["timestamp"] + list(features.keys())
+                if cols is None:
+                    # fallback to a minimal flat row
+                    cols = ["timestamp", "Destination Port", "Flow Duration", "Fwd Packet Length Min", "Packet Length Std"]
+                # ensure timestamp and values
+                row_feats = {}
+                row_feats["timestamp"] = ts
+                for c in cols:
+                    if c == "timestamp":
+                        continue
+                    row_feats[c] = features.get(c, "")
+                append_flat_row(log_features, cols, row_feats)
 
     except Exception as e:
         print(f"[{pretty_time()}] ERROR processing packet: {e}")
 
-# ---------- CLI & main ----------
+# ---------- CLI / main ----------
 def main(interface=None, count=0, bpf_filter=None, show_features=True, log_features=None,
-         min_packets=2, debug=False, cleanup_interval=60, model_path=None, threshold=0.5, verbose=False):
+         min_packets=2, debug=False, cleanup_interval=60, model_path=None, threshold=0.5,
+         verbose=False, flat=False, flat_columns=None):
     print("📡 Starting sniffer...")
     print(f"   Interface: {interface or 'default'}  Filter: {bpf_filter or 'none'}  Min-packets: {min_packets}")
     if log_features:
-        print(f"📝 Logging feature rows to: {os.path.abspath(log_features)}")
+        print(f"📝 Logging feature rows to: {os.path.abspath(log_features)} (flat={flat})")
     if model_path:
         print(f"🔌 Loading model for live prediction: {os.path.abspath(model_path)}")
-    # start background cleanup
+    # start cleanup thread
     if cleanup_interval and cleanup_interval > 0:
         t = threading.Thread(target=background_cleanup, args=(cleanup_interval,), daemon=True)
         t.start()
@@ -325,7 +329,9 @@ def main(interface=None, count=0, bpf_filter=None, show_features=True, log_featu
                                        min_packets=min_packets,
                                        debug=debug,
                                        model_wrapper=model_wrapper,
-                                       threshold=threshold),
+                                       threshold=threshold,
+                                       flat=flat,
+                                       flat_columns=flat_columns),
               store=False,
               count=count,
               filter=bpf_filter)
@@ -335,7 +341,7 @@ def main(interface=None, count=0, bpf_filter=None, show_features=True, log_featu
         print(f"[{pretty_time()}] ERROR in sniffing: {e}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Realtime sniffer with feature extraction and optional live model prediction")
+    parser = argparse.ArgumentParser(description="Realtime sniffer with Phase-2 feature extraction and optional live model prediction")
     parser.add_argument("-i", "--iface", help="Interface name to sniff on.")
     parser.add_argument("-c", "--count", type=int, default=0, help="Number of packets to capture (0 = infinite).")
     parser.add_argument("-f", "--filter", help="BPF filter string (e.g., 'tcp or udp').", default=None)
@@ -344,18 +350,18 @@ if __name__ == "__main__":
     parser.add_argument("--min-packets", type=int, default=2, help="Minimum packets seen in a flow before logging (default 2).")
     parser.add_argument("--debug", action="store_true", help="Print debug info about CSV rows before writing.")
     parser.add_argument("--cleanup-interval", type=int, default=60, help="Background cleanup interval in seconds (0 disables).")
-    parser.add_argument("--model", help="Local model bundle basename in detection-engine/models (e.g., 'realtime_rf' or 'lgb') or full --model-path")
+    parser.add_argument("--model", help="Local model basename in detection-engine/models (e.g., 'realtime_rf' or 'lgb') or use --model-path")
     parser.add_argument("--model-path", help="Direct path to model bundle (.pkl/.joblib) overrides --model")
     parser.add_argument("--threshold", type=float, default=0.5, help="Probability threshold for ATTACK label when model present")
     parser.add_argument("--verbose", action="store_true", help="Verbose model loading output")
+    parser.add_argument("--flat", action="store_true", help="Write flat CSV columns instead of JSON features (training-friendly)")
+    parser.add_argument("--flat-columns", help="Comma-separated column names to force for flat CSV (overrides model feature order)")
     args = parser.parse_args()
 
-    # resolve model path if provided
     model_path = None
     if args.model_path:
         model_path = args.model_path
     elif args.model:
-        # attempt to find model file in detection-engine/models by common names
         md = args.model.lower()
         candidates = [f"{md}.pkl", f"{md}.joblib", f"{md}_model.pkl", f"{md}_model.joblib", md + ".model"]
         models_dir = os.path.join(HERE, "models")
@@ -364,7 +370,6 @@ if __name__ == "__main__":
             if os.path.exists(p):
                 model_path = p
                 break
-        # fallback to any pkl/joblib containing md
         if model_path is None and os.path.exists(models_dir):
             for f in os.listdir(models_dir):
                 if f.lower().endswith((".pkl", ".joblib")) and md in f.lower():
@@ -374,7 +379,12 @@ if __name__ == "__main__":
             print(f"⚠️  Model '{args.model}' not found in {models_dir}. Continuing without model.")
             model_path = None
 
+    flat_cols = None
+    if args.flat_columns:
+        flat_cols = [c.strip() for c in args.flat_columns.split(",") if c.strip()]
+
     main(interface=args.iface, count=args.count, bpf_filter=args.filter,
          show_features=args.show_features, log_features=args.log_features,
          min_packets=args.min_packets, debug=args.debug, cleanup_interval=args.cleanup_interval,
-         model_path=model_path, threshold=args.threshold, verbose=args.verbose)
+         model_path=model_path, threshold=args.threshold, verbose=args.verbose,
+         flat=args.flat, flat_columns=flat_cols)
