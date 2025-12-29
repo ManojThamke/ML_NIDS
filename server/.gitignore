@@ -21,6 +21,7 @@ pnpm-debug.log*
 # Database / Uploads
 # ===============================
 data/
+
 uploads/
 
 # ===============================

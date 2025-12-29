@@ -124,18 +124,58 @@ exports.getLogs = async (req, res) => {
 
 exports.exportLogs = async (req, res) => {
   try {
-    const { label, minProb, maxProb, search, format = "csv" } = req.query;
+    const {
+      label,
+      minProb,
+      maxProb,
+      search,
+      format = "csv",
+      range,
+      onlyAttack,
+    } = req.query;
 
     const query = {};
 
+    /* ===== Label ===== */
     if (label) query.finalLabel = label.toUpperCase();
 
+    if (onlyAttack === "true") {
+      query.finalLabel = "ATTACK";
+    }
+
+    /* ===== Probability ===== */
     if (minProb || maxProb) {
       query.probability = {};
       if (minProb) query.probability.$gte = Number(minProb);
       if (maxProb) query.probability.$lte = Number(maxProb);
     }
 
+    /* ===== Time Range ===== */
+    if (range) {
+      const now = Date.now();
+      let startTime;
+
+      switch (range) {
+        case "1h":
+          startTime = new Date(now - 60 * 60 * 1000);
+          break;
+        case "24h":
+          startTime = new Date(now - 24 * 60 * 60 * 1000);
+          break;
+        case "7d":
+          startTime = new Date(now - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "30d":
+          startTime = new Date(now - 30 * 24 * 60 * 60 * 1000);
+          break;
+      }
+
+      if (startTime) {
+        query.createdAt = { $gte: startTime };
+      }
+    }
+
+    /* ===== IP Search ===== */
     if (search) {
       const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query.$or = [
@@ -144,17 +184,22 @@ exports.exportLogs = async (req, res) => {
       ];
     }
 
+    /* ===== Fetch ALL matching logs (NO LIMIT) ===== */
     const logs = await Alert.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
-    // JSON export
+    /* ===== JSON ===== */
     if (format === "json") {
-      res.setHeader("Content-Disposition", "attachment; filename=logs.json");
-      return res.json(logs);
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=traffic_logs.json"
+      );
+      return res.status(200).send(JSON.stringify(logs));
     }
 
-    // CSV export
+    /* ===== CSV ===== */
     const fields = [
       "timestamp",
       "sourceIP",
@@ -166,14 +211,19 @@ exports.exportLogs = async (req, res) => {
     const parser = new Parser({ fields });
     const csv = parser.parse(logs);
 
-    res.header("Content-Type", "text/csv");
-    res.header("Content-Disposition", "attachment; filename=logs.csv");
-    res.send(csv);
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=traffic_logs.csv"
+    );
+    return res.status(200).send(csv);
 
   } catch (error) {
+    console.error("Export error:", error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 /**
  * =====================================================

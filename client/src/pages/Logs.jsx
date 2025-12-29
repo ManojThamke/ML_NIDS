@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { getLogs, exportLogs } from "../api";
 import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
+import ExportLogsModal from "../components/ExportLogsModal";
 
 function Logs() {
   const [logs, setLogs] = useState([]);
@@ -9,6 +10,9 @@ function Logs() {
 
   const [loading, setLoading] = useState(false);        // first load
   const [refreshing, setRefreshing] = useState(false); // auto refresh
+
+  // 📤 Export Modal
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // 🔄 Auto refresh
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -55,30 +59,36 @@ function Logs() {
   }, [autoRefresh, fetchLogs]);
 
   /* ================= EXPORT ================= */
-  const handleExport = async (format) => {
+  const handleExport = async (format, options) => {
     try {
       const res = await exportLogs({
         format,
-        label,
-        search,
-        minProb,
-        maxProb,
+        range: options.range,
+        onlyAttack: options.onlyAttack,
       });
 
       const blob = new Blob([res.data], {
-        type: format === "csv" ? "text/csv" : "application/json",
+        type:
+          format === "csv"
+            ? "text/csv;charset=utf-8;"
+            : "application/json;charset=utf-8;",
       });
 
       const url = window.URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = url;
-      a.download = `traffic_logs.${format}`;
+      a.download = `traffic_logs_${Date.now()}.${format}`;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
+
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failed:", err);
     }
   };
+
 
   /* ================= INSIGHTS (DAY 75) ================= */
   const insights = useMemo(() => {
@@ -221,18 +231,12 @@ function Logs() {
 
         <div className="ml-auto flex gap-2">
           <button
-            onClick={() => handleExport("csv")}
+            onClick={() => setShowExportModal(true)}
             className="px-4 py-2 rounded-lg border border-pink-300 text-pink-600 hover:bg-pink-50"
           >
-            📄 Export CSV
+            📤 Export
           </button>
 
-          <button
-            onClick={() => handleExport("json")}
-            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
-          >
-            🧾 Export JSON
-          </button>
         </div>
       </div>
 
@@ -326,6 +330,16 @@ function Logs() {
           Next
         </button>
       </div>
+
+      {/* 📤 Export Modal */}
+      <ExportLogsModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={(options) => {
+          handleExport(options.format, options);
+        }}
+      />
+
     </div>
   );
 }
