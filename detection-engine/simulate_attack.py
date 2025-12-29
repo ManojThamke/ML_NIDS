@@ -3,10 +3,10 @@
 simulate_attack.py — Generate network traffic for ML-NIDS testing and demonstration
 
 Usage examples:
-  python detection-engine\simulate_attack.py udp_flood --target 192.168.1.10 --port 9999 --count 500 --rate 200
-  python detection-engine\simulate_attack.py tcp_syn_flood --target 192.168.1.10 --port 80 --count 500 --rate 100
-  python detection-engine\simulate_attack.py normal_traffic --target 192.168.1.10 --port 80 --count 200 --rate 50
-  python detection-engine\simulate_attack.py mixed --target 192.168.1.10 --port 80 --count 500 --rate 100
+  python detection-engine\simulate_attack.py udp_flood --target 10.238.194.210 --port 9999 --count 500 --rate 200
+  python detection-engine\simulate_attack.py tcp_syn_flood --target 172.29.192.1:3000 --port 80 --count 500 --rate 100
+  python detection-engine\simulate_attack.py normal_traffic --target 10.238.194.210 --port 80 --count 200 --rate 50
+  python detection-engine\simulate_attack.py mixed --target 10.238.194.210 --port 80 --count 500 --rate 100
 """
 
 import argparse

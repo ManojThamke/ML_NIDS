@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """
-🗓️ Day 32 – Realtime Detector Logger
-------------------------------------
-✅ Supports two modes:
-   1. Test CSV mode (--test_csv logs/realtime_features.csv)
-   2. Live sniff mode (--iface "Wi-Fi" --filter "tcp or udp")
-python detection-engine\realtime_detector_logger.py --model detection-engine/models/lightgbm_advanced.pkl --iface "Wi-Fi" --filter "tcp or udp" --threshold 0.9 --log logs/realtime_detection_live_lgb.csv
-python detection-engine\realtime_detector_logger_multi_thresh.py --model detection-engine/models/realtime_rf.pkl --iface "Wi-Fi" --thresholds 0.5,0.7,0.9 --log logs/realtime_detection_live_rf_multi.csv
-python detection-engine\realtime_detector_logger.py --model detection-engine/models/xgboost_advanced.pkl --iface "Wi-Fi" --filter "tcp or udp" --threshold 0.9 --log logs/realtime_detection_live_xgb.csv
-xgboost_advanced
-📂 Logs are always written to CSV (default: logs/realtime_detection.csv).
-💡 Ensures file saves even if interrupted (Ctrl+C).
+🗓️ Day 47 – Realtime Detector Logger (Backend Integrated)
+--------------------------------------------------------
+✅ Supports:
+   1. Test CSV mode
+   2. Live sniff mode
+✅ Logs to CSV
+✅ Sends alerts to Backend (POST /alerts)
 """
 
 import os
@@ -20,8 +16,12 @@ import datetime
 import json
 import joblib
 import pandas as pd
+import requests
 
-# 🛰️ Try importing scapy for live sniff
+# ================= BACKEND CONFIG =================
+BACKEND_URL = "http://localhost:5000/alerts"
+
+# ================= SCAPY IMPORT ===================
 try:
     from scapy.all import sniff, IP, TCP, UDP, ICMP
     SCAPY = True
@@ -31,86 +31,101 @@ except Exception:
 HERE = os.path.dirname(__file__)
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 
-# 📦 Feature extractor for live packets
+# ================= FEATURE EXTRACTOR ==============
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
+
 try:
     from feature_extractor import FeatureExtractor
 except Exception:
     FeatureExtractor = None
 
-
-# 🕒 Time helper
+# ================= TIME HELPER ====================
 def now_iso():
     return datetime.datetime.now().isoformat()
 
-
-# 🎯 Model Loader
+# ================= MODEL BUNDLE ===================
 class ModelBundle:
     def __init__(self, path, verbose=False):
         if not os.path.exists(path):
             raise FileNotFoundError(path)
+
         self.bundle = joblib.load(path)
         self.model = self.bundle.get("model")
         self.scaler = self.bundle.get("scaler")
         self.feature_cols = self.bundle.get("feature_cols") or self.bundle.get("feature_columns")
+
         if verbose:
-            print(f"🔌 Model loaded: {os.path.basename(path)} with {len(self.feature_cols) if self.feature_cols else '?'} features")
+            print(
+                f"🔌 Model loaded: {os.path.basename(path)} "
+                f"with {len(self.feature_cols) if self.feature_cols else '?'} features"
+            )
 
     def prepare(self, feat_dict):
-        """Align features with model columns"""
         if self.feature_cols:
             row = [feat_dict.get(c, 0.0) for c in self.feature_cols]
-            df = pd.DataFrame([row], columns=self.feature_cols)
-        else:
-            df = pd.DataFrame([feat_dict])
-        return df
+            return pd.DataFrame([row], columns=self.feature_cols)
+        return pd.DataFrame([feat_dict])
 
     def predict(self, feat_dict):
         X = self.prepare(feat_dict)
-        try:
-            if self.scaler is not None:
-                X_proc = self.scaler.transform(X)
-            else:
-                X_proc = X
-        except Exception:
-            X_proc = X
 
-        pred = int(self.model.predict(X_proc)[0])
+        try:
+            Xp = self.scaler.transform(X) if self.scaler is not None else X
+        except Exception:
+            Xp = X
+
+        pred = int(self.model.predict(Xp)[0])
         prob = None
         try:
             if hasattr(self.model, "predict_proba"):
-                prob = float(self.model.predict_proba(X_proc)[0][1])
+                prob = float(self.model.predict_proba(Xp)[0][1])
         except Exception:
             pass
+
         return pred, prob
 
-
-# ✍️ Append to CSV log
+# ================= CSV LOGGER =====================
 def append_row(log_file, row):
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     df = pd.DataFrame([row])
     header = not os.path.exists(log_file)
     df.to_csv(log_file, mode="a", header=header, index=False, encoding="utf-8")
 
+# ================= BACKEND POST ===================
+def send_alert_to_backend(row, model_name):
+    payload = {
+        "timestamp": row.get("timestamp"),
+        "sourceIP": row.get("src"),
+        "destinationIP": row.get("dst"),
+        "modelUsed": model_name,
+        "probability": row.get("prob"),
+        "finalLabel": "ATTACK" if "ATTACK" in row.get("label", "") else "BENIGN"
+    }
 
-# 📂 Load features from CSV for test mode
+    try:
+        res = requests.post(BACKEND_URL, json=payload, timeout=3)
+        if res.status_code != 201:
+            print("⚠️ Backend rejected alert:", res.text)
+    except Exception as e:
+        print("⚠️ Backend POST failed:", e)
+
+# ================= TEST MODE ======================
 def load_features_csv(csv_path):
     df = pd.read_csv(csv_path)
-    if "features" in df.columns:  # JSON features column
-        return [json.loads(f) if isinstance(f, str) else {} for f in df["features"].fillna("")], df
-    else:  # each column is a feature
-        return [row.dropna().to_dict() for _, row in df.iterrows()], df
+    if "features" in df.columns:
+        return [json.loads(f) for f in df["features"].fillna("{}")], df
+    return [row.dropna().to_dict() for _, row in df.iterrows()], df
 
-
-# 🧪 Test Mode
-def run_test_mode(bundle, csv_path, threshold, log_file):
-    feats, df = load_features_csv(csv_path)
+def run_test_mode(bundle, csv_path, threshold, log_file, model_name):
+    feats, _ = load_features_csv(csv_path)
     print(f"📂 Loaded {len(feats)} rows from {csv_path}")
+
     for i, f in enumerate(feats):
         ts = now_iso()
         pred, prob = bundle.predict(f)
         label = "ATTACK 🚨" if prob is not None and prob >= threshold else "BENIGN ✅"
+
         row = {
             "timestamp": ts,
             "src": f.get("src", "N/A"),
@@ -121,37 +136,39 @@ def run_test_mode(bundle, csv_path, threshold, log_file):
             "label": label,
             "features": json.dumps(f)
         }
-        print(f"[{ts}] Row {i} → pred={pred} prob={prob} → {label}")
+
         append_row(log_file, row)
-    print("📝 Test mode complete. Log saved.")
+        send_alert_to_backend(row, model_name)
 
+        print(f"[{ts}] Row {i} → pred={pred} prob={prob} → {label}")
 
-# 🌐 Live Mode
-def run_live_mode(bundle, extractor, threshold, log_file, iface, bpf):
+# ================= LIVE MODE ======================
+def run_live_mode(bundle, extractor, threshold, log_file, iface, bpf, model_name):
     if not SCAPY:
-        raise RuntimeError("❌ Scapy not available, cannot run live sniffing.")
+        raise RuntimeError("❌ Scapy not available.")
+
     print(f"🛰️ Live sniff started (iface={iface}, filter={bpf}, threshold={threshold})")
 
     def on_packet(pkt):
         ts = now_iso()
         src = dst = proto = "N/A"
-        try:
-            if IP in pkt:
-                ip = pkt[IP]
-                src, dst = ip.src, ip.dst
-                proto = "TCP" if TCP in pkt else "UDP" if UDP in pkt else "ICMP"
-        except Exception:
-            pass
+
+        if IP in pkt:
+            ip = pkt[IP]
+            src, dst = ip.src, ip.dst
+            proto = "TCP" if TCP in pkt else "UDP" if UDP in pkt else "ICMP"
 
         try:
-            f = extractor.process_packet(pkt)
+            feats = extractor.process_packet(pkt)
         except Exception:
             return
-        if not f:
+
+        if not feats:
             return
 
-        pred, prob = bundle.predict(f)
+        pred, prob = bundle.predict(feats)
         label = "ATTACK 🚨" if prob is not None and prob >= threshold else "BENIGN ✅"
+
         row = {
             "timestamp": ts,
             "src": src,
@@ -160,42 +177,47 @@ def run_live_mode(bundle, extractor, threshold, log_file, iface, bpf):
             "pred": pred,
             "prob": prob,
             "label": label,
-            "features": json.dumps(f)
+            "features": json.dumps(feats)
         }
-        print(f"[{ts}] {proto} {src} -> {dst} → pred={pred} prob={prob} → {label}")
+
         append_row(log_file, row)
+        send_alert_to_backend(row, model_name)
+
+        print(f"[{ts}] {proto} {src} → {dst} | prob={prob} → {label}")
 
     sniff(iface=iface, prn=on_packet, store=False, filter=bpf)
 
-
-# 🏁 Main
+# ================= MAIN ===========================
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--model", required=True, help="Path to model .pkl/.joblib bundle")
-    p.add_argument("--test_csv", help="Run in test mode with features CSV")
-    p.add_argument("--iface", help="Interface for live sniffing (e.g., Wi-Fi)")
-    p.add_argument("--filter", help="BPF filter (e.g., 'tcp or udp')", default=None)
-    p.add_argument("--threshold", type=float, default=0.5, help="Probability threshold")
-    p.add_argument("--log", default=os.path.join(ROOT, "logs", "realtime_detection.csv"), help="CSV log path")
+    p.add_argument("--model", required=True)
+    p.add_argument("--test_csv")
+    p.add_argument("--iface")
+    p.add_argument("--filter", default=None)
+    p.add_argument("--threshold", type=float, default=0.5)
+    p.add_argument("--log", default=os.path.join(ROOT, "logs", "realtime_detection.csv"))
     args = p.parse_args()
+
+    model_name = os.path.basename(args.model)
 
     print(f"🔌 Loading model: {args.model}")
     bundle = ModelBundle(args.model, verbose=True)
     print(f"📝 Logging to: {args.log}")
 
     if args.test_csv:
-        run_test_mode(bundle, args.test_csv, args.threshold, args.log)
+        run_test_mode(bundle, args.test_csv, args.threshold, args.log, model_name)
     else:
         if FeatureExtractor is None:
-            print("❌ FeatureExtractor not available. Cannot run live mode.")
+            print("❌ FeatureExtractor not available.")
             sys.exit(1)
-        extractor = FeatureExtractor()
-        run_live_mode(bundle, extractor, args.threshold, args.log, args.iface, args.filter)
 
+        extractor = FeatureExtractor()
+        run_live_mode(bundle, extractor, args.threshold, args.log, args.iface, args.filter, model_name)
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print("\n🛑 Interrupted by user. Log saved safely.")
-# python .\detection-engine\realtime_detector_multi.py --models lgb,rf,xgb,svm --model-paths "detection-engine\models\lightgbm_advanced.pkl,detection-engine\models\realtime_rf.pkl,detection-engine\models\xgboost_advanced.pkl,detection-engine\models\svm.pkl" --iface "Wi-Fi" --filter "tcp or udp" --agg max --smooth 3 --threshold 0.35 --log "logs\realtime_predictions_ensemble_live.csv" --verbose
+
+# python detection-engine\realtime_detector_logger.py --model detection-engine/models/lightgbm_advanced.pkl --iface "Wi-Fi" --filter "tcp or udp" --threshold 0.9 --log logs/realtime_detection_live_lgb.csv

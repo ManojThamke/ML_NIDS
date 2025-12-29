@@ -9,11 +9,11 @@ Features:
  - Test mode (CSV) and live sniff mode (Scapy)
  - Friendly icon-based console prints + robust CSV parsing
 
-Example:
-  python detection-engine\realtime_detector_multi.py --models lgb,rf,xgb,svm \
-    --agg max --smooth 3 --threshold 0.3 --iface "Wi-Fi" --filter "tcp or udp" --log logs/realtime_ensemble.csv --verbose
+ perfect command:
+ python detection-engine\realtime_detector_multi.py --models rf,lgb,xgb,svm --agg mean --smooth 3 --threshold 0.5 --iface "Wi-Fi" --filter "tcp or udp" --log logs\realtime_ensemble_live.csv --verbose
 
-  python detection-engine\realtime_detector_multi.py --models rf --test_csv logs/realtime_features.csv --threshold 0.4 --log logs/realtime_rf.csv
+ python detection-engine\realtime_detector_multi.py --models rf,lgb,xgb,svm,naive_bayes,knn,mlp --agg mean --smooth 3 --threshold 0.5 --iface "Wi-Fi" --filter "tcp or udp" --log logs\realtime_ensemble_live.csv --verbose
+
 """
 
 import os
@@ -25,7 +25,10 @@ import joblib
 import pandas as pd
 import math
 from collections import deque
+import signal
 
+# ignore stdout encoding errors
+sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
 # Scapy optional for live mode
 try:
     from scapy.all import sniff, IP, TCP, UDP, ICMP
@@ -45,17 +48,48 @@ try:
 except Exception:
     FeatureExtractor = None
 
+# Graceful Shutdoun
+RUNNING = True
+
+def shutdown_handler(signum, frame):
+    global RUNNING
+    RUNNING = False
+    emit_event("status", {"message": "Monitoring stopped"})
+
+
+signal.signal(signal.SIGINT, shutdown_handler)
+signal.signal(signal.SIGTERM, shutdown_handler)
+
 # ---------- Utilities ----------
 def now_ts():
     # return ISO-like timestamp for logs and prints
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-ICON_LOAD = "🔌"
-ICON_INFO = "📝"
-ICON_ALERT = "🚨"
-ICON_OK = "✅"
-ICON_WARN = "⚠️"
-ICON_PACKET = "📡"
+ICON_INFO = "[INFO]"
+ICON_ALERT = "[ALERT]"
+ICON_OK = "[OK]"
+ICON_WARN = "[WARN]"
+ICON_PACKET = "[PKT]"
+
+
+# Backend-friendly JSON Event Emitter
+def emit_event(event_type, payload):
+    """
+    Emits structured JSON events for backend/frontend
+    """
+    print(json.dumps({
+        "event": event_type,
+        "timestamp": now_ts(),
+        "data": payload
+    }), flush=True)
+
+# ---------- Safe print ----------
+def safe_print(msg):
+    try:
+        print(msg, flush=True)
+    except UnicodeEncodeError:
+        print(msg.encode("ascii", "ignore").decode(), flush=True)
+
 
 # ---------- Model path finding ----------
 def find_model_path(choice):
@@ -305,25 +339,45 @@ def run_test_mode(wrappers, csv_path, threshold, log_file, smoothers, agg, weigh
             print(f"[{ts}] ERROR row {i}: {e}")
 
 # ---------- Live mode: multi-model ----------
-def run_live_mode(wrappers, extractor, threshold, log_file, smoothers, agg, weights, iface=None, bpf=None, count=0, verbose=False):
+def run_live_mode(wrappers, extractor, threshold, log_file, smoothers,
+                  agg, weights, run_mode,
+                  iface=None, bpf=None, count=0, verbose=False):
+
     if not SCAPY:
         raise RuntimeError("Scapy not available for live mode.")
-    names = [n for n,_ in wrappers]
-    print(f"{ICON_INFO} Starting live capture (models={','.join(names)}) iface={iface or 'default'} filter={bpf or 'none'} threshold={threshold}")
+
+    names = [n for n, _ in wrappers]
+
+    emit_event("status", {
+        "message": "Monitoring started",
+        "models": names,
+        "threshold": threshold
+    })
+
+    print(f"{ICON_INFO} Starting live capture (models={','.join(names)}) "
+          f"iface={iface or 'default'} filter={bpf or 'none'} threshold={threshold}")
+
     def on_packet(pkt):
+        if not RUNNING:
+            return
+
         ts = now_ts()
-        # basic header
+
         try:
             if IP in pkt:
                 ip = pkt[IP]
-                src = getattr(ip, "src", "") or ""
-                dst = getattr(ip, "dst", "") or ""
-                proto = "TCP" if TCP in pkt else "UDP" if UDP in pkt else "ICMP" if ICMP in pkt else str(getattr(ip, "proto", "IP"))
+                src = getattr(ip, "src", "")
+                dst = getattr(ip, "dst", "")
+                proto = (
+                    "TCP" if TCP in pkt else
+                    "UDP" if UDP in pkt else
+                    "ICMP" if ICMP in pkt else "IP"
+                )
             else:
-                src = dst = proto = ""
+                return
         except Exception:
-            src = dst = proto = ""
-        # extract features
+            return
+
         try:
             features = extractor.process_packet(pkt)
             if not features:
@@ -332,41 +386,64 @@ def run_live_mode(wrappers, extractor, threshold, log_file, smoothers, agg, weig
             if verbose:
                 print(f"{ICON_WARN} [{ts}] feature extraction error: {e}")
             return
-        # predict per-model
+
         per_model = []
-        try:
-            for name, wrap in wrappers:
-                try:
-                    pred, prob = wrap.predict(features)
-                except Exception:
-                    pred, prob = 0, None
-                smoothers[name].add(0.0 if prob is None else prob)
-                per_model.append((name, smoothers[name].avg()))
-            agg_prob = aggregate(per_model, agg=agg, weights=weights)
-            alert = 1 if agg_prob >= threshold else 0
-            dp = features.get("Destination Port", "")
-            sp = features.get("Source Port", "")
-            # console print with icons
-            status_icon = ICON_ALERT if alert else ICON_OK
-            print(f"[{ts}] {ICON_PACKET} {proto} {src}:{sp} -> {dst}:{dp}  agg_prob={agg_prob:.6f} alert={alert} {status_icon}")
-            if verbose:
-                per_print = ", ".join(f"{n}:{round(p,6)}" for n,p in per_model)
-                print(f"   models -> {per_print}")
-            row = {
-                "timestamp": ts,
+        for name, wrap in wrappers:
+            try:
+                _, prob = wrap.predict(features)
+            except Exception:
+                prob = None
+
+            smoothers[name].add(0.0 if prob is None else prob)
+            per_model.append((name, smoothers[name].avg()))
+
+        agg_prob = aggregate(per_model, agg=agg, weights=weights)
+        alert = 1 if agg_prob >= threshold else 0
+
+        event_payload = {
+            "src": src,
+            "dst": dst,
+            "proto": proto,
+            "agg_prob": round(agg_prob, 6),
+            "alert": alert,
+            "per_model": {n: round(p, 6) for n, p in per_model}
+        }
+
+        if run_mode == "service":
+            emit_event("prediction", {
                 "src": src,
                 "dst": dst,
                 "proto": proto,
-                "agg_prob": float(round(agg_prob, 6)),
-                "alert": int(alert),
-                "per_model": json.dumps({n: round(p,6) for n,p in per_model}, ensure_ascii=False),
-                "features": json.dumps(features, ensure_ascii=False)
-            }
-            write_row(log_file, row)
-        except Exception as e:
-            print(f"{ICON_WARN} [{ts}] ERROR predicting: {e}")
+                "agg_prob": round(agg_prob, 6),
+                "alert": alert,
+                "per_model": {n: round(p,6) for n,p in per_model}
+            })
+        else:
+            status_icon = ICON_ALERT if alert else ICON_OK
+            print(f"[{ts}] {ICON_PACKET} {proto} {src} -> {dst} "
+                  f"agg_prob={agg_prob:.6f} alert={alert} {status_icon}")
 
-    sniff(iface=iface, prn=on_packet, store=False, count=count, filter=bpf)
+        write_row(log_file, {
+            "timestamp": ts,
+            "src": src,
+            "dst": dst,
+            "proto": proto,
+            "agg_prob": round(agg_prob, 6),
+            "alert": alert,
+            "per_model": json.dumps(event_payload["per_model"]),
+            "features": json.dumps(features)
+        })
+
+    sniff(
+        iface=iface,
+        prn=on_packet,
+        store=False,
+        count=count,
+        filter=bpf,
+        stop_filter=lambda _: not RUNNING
+    )
+
+
 
 # ---------- Load multiple wrappers ----------
 def load_wrappers(models_csv, model_paths_csv=None, verbose=False):
@@ -403,6 +480,8 @@ def main():
     p.add_argument("--count", type=int, default=0, help="Packet count for sniff (0=infinite)")
     p.add_argument("--no_extractor", action="store_true", help="Skip importing feature_extractor for live mode (useful for test_csv)")
     p.add_argument("--verbose", action="store_true", help="Verbose output")
+    p.add_argument("--run_mode",choices=["cli", "service"],default="cli",help="cli = terminal mode, service = backend controlled mode")
+
     args = p.parse_args()
 
     try:
@@ -434,7 +513,21 @@ def main():
 
     # run live
     try:
-        run_live_mode(wrappers, extractor, args.threshold, args.log, smoothers, args.agg, weights, iface=args.iface, bpf=args.bpf, count=args.count, verbose=args.verbose)
+        run_live_mode(
+            wrappers,
+            extractor,
+            args.threshold,
+            args.log,
+            smoothers,
+            args.agg,
+            weights,
+            args.run_mode,          # ✅ PASS IT HERE
+            iface=args.iface,
+            bpf=args.bpf,
+            count=args.count,
+            verbose=args.verbose
+        )
+
     except KeyboardInterrupt:
         print(f"\n{ICON_INFO} Stopped by user (KeyboardInterrupt).")
     except Exception as e:
