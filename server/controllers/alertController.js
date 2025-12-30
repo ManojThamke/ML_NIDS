@@ -232,49 +232,59 @@ exports.exportLogs = async (req, res) => {
  * =====================================================
  */
 exports.getLogsInsights = async (req, res) => {
+  const [
+    topSourceIPs,
+    topDestinationIPs,
+    attackCount,
+    benignCount,
+    highRiskCount,
+  ] = await Promise.all([
+    Alert.aggregate([{ $group: { _id: "$sourceIP", count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
+    Alert.aggregate([{ $group: { _id: "$destinationIP", count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
+    Alert.countDocuments({ finalLabel: "ATTACK" }),
+    Alert.countDocuments({ finalLabel: "BENIGN" }),
+    Alert.countDocuments({ probability: { $gte: 0.7 } }),
+  ]);
+
+  res.json({
+    topSourceIPs,
+    topDestinationIPs,
+    attackCount,
+    benignCount,
+    highRiskCount,
+  });
+};
+
+/**
+ * =====================================================
+ * TOP ATTACKED DESTINATIONS (GLOBAL)
+ * GET /api/alerts/logs/top-destinations
+ * =====================================================
+ */
+exports.getTopAttackedDestinations = async (req, res) => {
   try {
-    const [
-      topSourceIPs,
-      topDestinationIPs,
-      attackCount,
-      benignCount,
-      highRiskCount,
-    ] = await Promise.all([
-      // 🔝 Top Source IPs
-      Alert.aggregate([
-        { $group: { _id: "$sourceIP", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 },
-      ]),
-
-      // 🎯 Top Destination IPs
-      Alert.aggregate([
-        { $group: { _id: "$destinationIP", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 },
-      ]),
-
-      // 🔴 Attack Count
-      Alert.countDocuments({ finalLabel: "ATTACK" }),
-
-      // 🟢 Benign Count
-      Alert.countDocuments({ finalLabel: "BENIGN" }),
-
-      // 🚨 High Risk Logs (probability > 0.7)
-      Alert.countDocuments({ probability: { $gte: 0.7 } }),
+    const data = await Alert.aggregate([
+      { $match: { finalLabel: "ATTACK" } }, // only attacks
+      {
+        $group: {
+          _id: "$destinationIP",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
     ]);
 
-    res.json({
-      topSourceIPs,
-      topDestinationIPs,
-      attackCount,
-      benignCount,
-      highRiskCount,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(data.map(d => ({
+      destination: d._id,
+      count: d.count
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
+
+
 /**
  * =====================================================
  * Traffic Timeline (Aligned & UTC Safe)
@@ -321,8 +331,8 @@ exports.getTrafficTimeline = async (req, res) => {
         break;
 
       default:
-        startTime = new Date(now.getTime() - 60 * 60 * 1000);
-        bucketSize = 60 * 1000;
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        bucketSize = 5 *60 * 1000;
     }
 
     const data = await Alert.aggregate([

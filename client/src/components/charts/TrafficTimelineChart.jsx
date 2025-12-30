@@ -20,7 +20,7 @@ const ranges = [
 ];
 
 function TrafficTimelineChart() {
-    const [range, setRange] = useState("1h");
+    const [range, setRange] = useState("24h");
     const [data, setData] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -44,12 +44,12 @@ function TrafficTimelineChart() {
 
     /* ================= AUTO REFRESH ================= */
     useEffect(() => {
-        const interval = setInterval(fetchTimeline, 5000);
+        const interval = setInterval(fetchTimeline, 2000);
         return () => clearInterval(interval);
     }, [fetchTimeline]);
 
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border">
+        <div className="bg-white rounded-xl p-6 shadow-sm border min-h-[380px]">
             <div className="flex-1">
                 <ResponsiveContainer width="100%" height="100%">
 

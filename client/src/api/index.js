@@ -14,4 +14,5 @@ export const getModelMetrics = () => API.get("/model-metrics");
 export const getLogs = (params) => API.get("/alerts/logs", { params });
 export const exportLogs = (params) => API.get("/alerts/export", { params, responseType: 'blob' });
 export const getLogsInsights = () => API.get("/alerts/logs/insights");
-export const getTrafficTimeline = (range = "1h") => API.get(`/alerts/logs/timeline?range=${range}`);
+export const getTrafficTimeline = (range = "24h") => API.get(`/alerts/logs/timeline?range=${range}`);
+export const getTopDestinations = () => API.get("/alerts/logs/top-destinations");

@@ -1,7 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, } from "react";
 import { getLogs, exportLogs } from "../api";
 import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
 import ExportLogsModal from "../components/ExportLogsModal";
+import LogsInsights from "../components/LogsInsights";
+import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
 
 function Logs() {
   const [logs, setLogs] = useState([]);
@@ -90,61 +92,16 @@ function Logs() {
   };
 
 
-  /* ================= INSIGHTS (DAY 75) ================= */
-  const insights = useMemo(() => {
-    const sourceMap = {};
-    let attack = 0;
-    let benign = 0;
-    let highRisk = 0;
 
-    logs.forEach((l) => {
-      sourceMap[l.sourceIP] = (sourceMap[l.sourceIP] || 0) + 1;
-      l.finalLabel === "ATTACK" ? attack++ : benign++;
-      if (l.probability >= 0.7) highRisk++;
-    });
-
-    const topSources = Object.entries(sourceMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
-
-    return { attack, benign, highRisk, topSources };
-  }, [logs]);
 
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Traffic Logs</h1>
 
-      {/* 📊 DAY 75 – LOGS INSIGHTS */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow border">
-          <p className="text-sm text-gray-500">Attack Logs</p>
-          <p className="text-2xl font-bold text-red-600">{insights.attack}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl shadow border">
-          <p className="text-sm text-gray-500">Benign Logs</p>
-          <p className="text-2xl font-bold text-green-600">{insights.benign}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl shadow border">
-          <p className="text-sm text-gray-500">High Risk Traffic</p>
-          <p className="text-2xl font-bold text-yellow-600">
-            {insights.highRisk}
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl shadow border">
-          <p className="text-sm text-gray-500 mb-1">Top Source IPs</p>
-          {insights.topSources.map(([ip, count]) => (
-            <p key={ip} className="text-xs font-mono">
-              {ip} ({count})
-            </p>
-          ))}
-        </div>
-      </div>
-
+      {/* 📊 Insights */}
+      <LogsInsights />
       {/* 🔍 Filters */}
-      <div className="bg-white rounded-xl p-4 shadow border grid grid-cols-5 gap-4">
+      <div className="bg-white rounded-xl p-4 shadow border grid grid-cols-5 gap-4 ">
         <select
           value={label}
           onChange={(e) => {
@@ -240,8 +197,17 @@ function Logs() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      {/* Charts Section */}
+      {/* <div className="grid grid-cols-1 gap-6">
         <TrafficTimelineChart logs={logs} />
+      </div> */}
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-8">
+          <TrafficTimelineChart />
+        </div>
+        <div className="col-span-4">
+          <TopAttackedDestinationsChart />
+        </div>
       </div>
 
 

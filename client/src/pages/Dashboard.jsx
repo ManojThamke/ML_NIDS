@@ -4,7 +4,8 @@ import AttackBenignDonut from "../components/charts/AttackBenignDonut";
 import AttackProbabilityArea from "../components/charts/AttackProbabilityArea";
 import AlertsTable from "../components/AlertsTable";
 import ModelComparisonChart from "../components/charts/ModelComparisonChart";
-
+import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
+import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
 function Dashboard({ alerts, stats, monitoring, setMonitoring }) {
   return (
     <div className="p-8 space-y-6">
@@ -35,6 +36,15 @@ function Dashboard({ alerts, stats, monitoring, setMonitoring }) {
         <div className="col-span-5">
           <ModelComparisonChart />
         </div>
+
+        <div className="col-span-8">
+          <TrafficTimelineChart />
+        </div>
+        <div className="col-span-4">
+          <TopAttackedDestinationsChart />
+        </div>
+        
+        
 
       </div>
 

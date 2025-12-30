@@ -51,7 +51,7 @@ function ExportLogsModal({ isOpen, onClose, onExport }) {
             CSV
           </label>
 
-          <label className="flex items-center gap-2 text-gray-400 cursor-not-allowed">
+          <label className="flex items-center gap-2 mb-2">
             <input 
             type="radio" 
             checked={format === "json"}
