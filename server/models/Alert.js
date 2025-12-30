@@ -4,32 +4,48 @@ const AlertSchema = new mongoose.Schema(
   {
     timestamp: {
       type: String,
-      required: true
+      required: true,
     },
+
     sourceIP: {
       type: String,
-      required: true
+      required: true,
     },
+
     destinationIP: {
       type: String,
-      required: true
+      required: true,
     },
+
     modelUsed: {
       type: String,
-      required: true
+      required: true,
     },
+
     probability: {
       type: Number,
-      required: true
+      required: true,
     },
+
     finalLabel: {
       type: String,
       enum: ["ATTACK", "BENIGN"],
-      required: true
-    }
+      required: true,
+    },
+
+    // ✅ NEW (IMPORTANT)
+    perModel: {
+      type: mongoose.Schema.Types.Mixed, // {rf:0.7, xgb:0.8}
+      default: {},
+    },
+
+    features: {
+      type: mongoose.Schema.Types.Mixed, // packet features
+      default: {},
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 

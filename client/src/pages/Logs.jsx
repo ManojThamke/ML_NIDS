@@ -1,25 +1,24 @@
-import { useEffect, useState, useCallback, } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getLogs, exportLogs } from "../api";
+
 import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
+import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
 import ExportLogsModal from "../components/ExportLogsModal";
 import LogsInsights from "../components/LogsInsights";
-import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
+import LogDetailsModal from "../components/LogDetailsModal"; // ✅ ADD
 
 function Logs() {
   const [logs, setLogs] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedLog, setSelectedLog] = useState(null); // ✅ used now
 
-  const [loading, setLoading] = useState(false);        // first load
-  const [refreshing, setRefreshing] = useState(false); // auto refresh
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // 📤 Export Modal
   const [showExportModal, setShowExportModal] = useState(false);
-
-  // 🔄 Auto refresh
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  // 🔎 Filters
   const [label, setLabel] = useState("");
   const [search, setSearch] = useState("");
   const [minProb, setMinProb] = useState("");
@@ -28,8 +27,7 @@ function Logs() {
   /* ================= FETCH LOGS ================= */
   const fetchLogs = useCallback(async () => {
     try {
-      if (logs.length === 0) setLoading(true);
-      else setRefreshing(true);
+      logs.length === 0 ? setLoading(true) : setRefreshing(true);
 
       const res = await getLogs({
         page,
@@ -77,31 +75,27 @@ function Logs() {
       });
 
       const url = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
       a.download = `traffic_logs_${Date.now()}.${format}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failed:", err);
     }
   };
 
-
-
-
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Traffic Logs</h1>
 
-      {/* 📊 Insights */}
+      {/* 📊 Global Insights */}
       <LogsInsights />
+
       {/* 🔍 Filters */}
-      <div className="bg-white rounded-xl p-4 shadow border grid grid-cols-5 gap-4 ">
+      <div className="bg-white rounded-xl p-4 shadow border grid grid-cols-5 gap-4">
         <select
           value={label}
           onChange={(e) => {
@@ -175,32 +169,25 @@ function Logs() {
           Auto Refresh (5s)
         </label>
 
-        {autoRefresh && (
-          <span className="text-green-600">Live updating enabled</span>
-        )}
+        {autoRefresh && <span className="text-green-600">Live updating enabled</span>}
 
         {refreshing && (
-          <span className={`text-xs text-gray-500 transition-opacity
-           ${refreshing ? "opacity-100" : "opacity-0"}`}>
+          <span className="text-xs text-gray-500 animate-pulse">
             Refreshing…
           </span>
         )}
 
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto">
           <button
             onClick={() => setShowExportModal(true)}
             className="px-4 py-2 rounded-lg border border-pink-300 text-pink-600 hover:bg-pink-50"
           >
             📤 Export
           </button>
-
         </div>
       </div>
 
-      {/* Charts Section */}
-      {/* <div className="grid grid-cols-1 gap-6">
-        <TrafficTimelineChart logs={logs} />
-      </div> */}
+      {/* 📈 Charts */}
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-8">
           <TrafficTimelineChart />
@@ -210,8 +197,7 @@ function Logs() {
         </div>
       </div>
 
-
-      {/* 📊 Table */}
+      {/* 📊 Logs Table */}
       <div className="overflow-x-auto bg-white rounded-xl shadow border min-h-[420px]">
         <table className="min-w-full table-fixed text-sm">
           <thead className="bg-gray-100 text-gray-600 uppercase sticky top-0 z-10">
@@ -245,10 +231,12 @@ function Logs() {
               logs.map((log) => (
                 <tr
                   key={log._id}
-                  className={`border-b ${log.finalLabel === "ATTACK"
-                    ? "bg-red-50 hover:bg-red-100"
-                    : "hover:bg-gray-50"
-                    }`}
+                  onClick={() => setSelectedLog(log)} // ✅ CLICK
+                  className={`border-b cursor-pointer transition ${
+                    log.finalLabel === "ATTACK"
+                      ? "bg-red-50 hover:bg-red-100"
+                      : "hover:bg-gray-50"
+                  }`}
                 >
                   <td className="px-4 py-3 font-mono">
                     {new Date(log.timestamp).toLocaleString()}
@@ -260,10 +248,11 @@ function Logs() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${log.finalLabel === "ATTACK"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-green-100 text-green-700"
-                        }`}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        log.finalLabel === "ATTACK"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
                     >
                       {log.finalLabel}
                     </span>
@@ -301,11 +290,16 @@ function Logs() {
       <ExportLogsModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        onExport={(options) => {
-          handleExport(options.format, options);
-        }}
+        onExport={(options) => handleExport(options.format, options)}
       />
 
+      {/* 🔍 Log Details Modal */}
+      {selectedLog && (
+        <LogDetailsModal
+          log={selectedLog}
+          onClose={() => setSelectedLog(null)}
+        />
+      )}
     </div>
   );
 }

@@ -4,28 +4,41 @@ const { Parser } = require("json2csv");
 /* =====================================================
    CREATE ALERT (Python → Backend)
    POST /api/alerts
+   ✅ Parses per_model & features safely
 ===================================================== */
 exports.createAlert = async (req, res) => {
   try {
-    const alert = new Alert(req.body);
+    const body = { ...req.body };
+
+    // ✅ Parse JSON strings from Python
+    if (body.per_model) {
+      body.perModel = JSON.parse(body.per_model);
+      delete body.per_model;
+    }
+
+    if (body.features) {
+      body.features = JSON.parse(body.features);
+    }
+
+    const alert = new Alert(body);
     const savedAlert = await alert.save();
+
     res.status(201).json(savedAlert);
   } catch (error) {
+    console.error("Create alert error:", error);
     res.status(400).json({ error: error.message });
   }
 };
 
 /* =====================================================
    DASHBOARD TABLE (LATEST ONLY)
-   GET /api/alerts
-   ⚠️ LIMITED ON PURPOSE
 ===================================================== */
 exports.getAlerts = async (req, res) => {
   try {
     const alerts = await Alert.find()
       .sort({ createdAt: -1 })
       .limit(10)
-      .lean(); // ⚡ performance
+      .lean();
 
     res.status(200).json(alerts);
   } catch (error) {
@@ -34,8 +47,7 @@ exports.getAlerts = async (req, res) => {
 };
 
 /* =====================================================
-   DASHBOARD STATS (FULL DATABASE)
-   GET /api/alerts/stats
+   DASHBOARD STATS (GLOBAL)
 ===================================================== */
 exports.getAlertStats = async (req, res) => {
   try {
@@ -58,44 +70,30 @@ exports.getAlertStats = async (req, res) => {
 };
 
 /* =====================================================
-   SOC LOGS API (FILTER + SEARCH + PAGINATION)
-   GET /api/alerts/logs
+   LOGS API (FILTER + SEARCH + PAGINATION)
 ===================================================== */
 exports.getLogs = async (req, res) => {
   try {
-    let {
-      page = 1,
-      limit = 50,
-      label,
-      minProb,
-      maxProb,
-      search,
-    } = req.query;
+    let { page = 1, limit = 50, label, minProb, maxProb, search } = req.query;
 
-    // ✅ sanitize inputs
     page = Math.max(parseInt(page), 1);
-    limit = Math.min(parseInt(limit), 200); // prevent abuse
+    limit = Math.min(parseInt(limit), 200);
 
     const query = {};
 
-    // 🔍 Label filter
-    if (label) {
-      query.finalLabel = label.toUpperCase();
-    }
+    if (label) query.finalLabel = label.toUpperCase();
 
-    // 📊 Probability range
     if (minProb || maxProb) {
       query.probability = {};
-      if (minProb !== undefined) query.probability.$gte = Number(minProb);
-      if (maxProb !== undefined) query.probability.$lte = Number(maxProb);
+      if (minProb) query.probability.$gte = Number(minProb);
+      if (maxProb) query.probability.$lte = Number(maxProb);
     }
 
-    // 🔎 IP Search (safe regex)
     if (search) {
-      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query.$or = [
-        { sourceIP: { $regex: safeSearch, $options: "i" } },
-        { destinationIP: { $regex: safeSearch, $options: "i" } },
+        { sourceIP: { $regex: safe, $options: "i" } },
+        { destinationIP: { $regex: safe, $options: "i" } },
       ];
     }
 
@@ -120,86 +118,57 @@ exports.getLogs = async (req, res) => {
   }
 };
 
-/* ===============Export Logs=========================*/
-
+/* =====================================================
+   EXPORT LOGS (FULL DATASET – FAST)
+===================================================== */
 exports.exportLogs = async (req, res) => {
   try {
-    const {
-      label,
-      minProb,
-      maxProb,
-      search,
-      format = "csv",
-      range,
-      onlyAttack,
-    } = req.query;
+    const { label, minProb, maxProb, search, format = "csv", range, onlyAttack } =
+      req.query;
 
     const query = {};
 
-    /* ===== Label ===== */
     if (label) query.finalLabel = label.toUpperCase();
+    if (onlyAttack === "true") query.finalLabel = "ATTACK";
 
-    if (onlyAttack === "true") {
-      query.finalLabel = "ATTACK";
-    }
-
-    /* ===== Probability ===== */
     if (minProb || maxProb) {
       query.probability = {};
       if (minProb) query.probability.$gte = Number(minProb);
       if (maxProb) query.probability.$lte = Number(maxProb);
     }
 
-    /* ===== Time Range ===== */
     if (range) {
       const now = Date.now();
-      let startTime;
-
-      switch (range) {
-        case "1h":
-          startTime = new Date(now - 60 * 60 * 1000);
-          break;
-        case "24h":
-          startTime = new Date(now - 24 * 60 * 60 * 1000);
-          break;
-        case "7d":
-          startTime = new Date(now - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case "30d":
-          startTime = new Date(now - 30 * 24 * 60 * 60 * 1000);
-          break;
-      }
-
-      if (startTime) {
-        query.createdAt = { $gte: startTime };
+      const map = {
+        "1h": 60 * 60 * 1000,
+        "24h": 24 * 60 * 60 * 1000,
+        "7d": 7 * 24 * 60 * 60 * 1000,
+        "30d": 30 * 24 * 60 * 60 * 1000,
+      };
+      if (map[range]) {
+        query.createdAt = { $gte: new Date(now - map[range]) };
       }
     }
 
-    /* ===== IP Search ===== */
     if (search) {
-      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query.$or = [
-        { sourceIP: { $regex: safeSearch, $options: "i" } },
-        { destinationIP: { $regex: safeSearch, $options: "i" } },
+        { sourceIP: { $regex: safe, $options: "i" } },
+        { destinationIP: { $regex: safe, $options: "i" } },
       ];
     }
 
-    /* ===== Fetch ALL matching logs (NO LIMIT) ===== */
-    const logs = await Alert.find(query)
-      .sort({ createdAt: -1 })
-      .lean();
+    const logs = await Alert.find(query).sort({ createdAt: -1 }).lean();
 
-    /* ===== JSON ===== */
     if (format === "json") {
       res.setHeader("Content-Type", "application/json");
       res.setHeader(
         "Content-Disposition",
         "attachment; filename=traffic_logs.json"
       );
-      return res.status(200).send(JSON.stringify(logs));
+      return res.send(logs);
     }
 
-    /* ===== CSV ===== */
     const fields = [
       "timestamp",
       "sourceIP",
@@ -208,159 +177,122 @@ exports.exportLogs = async (req, res) => {
       "finalLabel",
     ];
 
-    const parser = new Parser({ fields });
-    const csv = parser.parse(logs);
+    const csv = new Parser({ fields }).parse(logs);
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
       "attachment; filename=traffic_logs.csv"
     );
-    return res.status(200).send(csv);
-
+    res.send(csv);
   } catch (error) {
     console.error("Export error:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-
-/**
- * =====================================================
- * LOGS INSIGHTS (SOC AGGREGATION)
- * GET /api/alerts/logs/insights
- * =====================================================
- */
+/* =====================================================
+   GLOBAL LOGS INSIGHTS
+===================================================== */
 exports.getLogsInsights = async (req, res) => {
-  const [
-    topSourceIPs,
-    topDestinationIPs,
-    attackCount,
-    benignCount,
-    highRiskCount,
-  ] = await Promise.all([
-    Alert.aggregate([{ $group: { _id: "$sourceIP", count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
-    Alert.aggregate([{ $group: { _id: "$destinationIP", count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
-    Alert.countDocuments({ finalLabel: "ATTACK" }),
-    Alert.countDocuments({ finalLabel: "BENIGN" }),
-    Alert.countDocuments({ probability: { $gte: 0.7 } }),
-  ]);
-
-  res.json({
-    topSourceIPs,
-    topDestinationIPs,
-    attackCount,
-    benignCount,
-    highRiskCount,
-  });
-};
-
-/**
- * =====================================================
- * TOP ATTACKED DESTINATIONS (GLOBAL)
- * GET /api/alerts/logs/top-destinations
- * =====================================================
- */
-exports.getTopAttackedDestinations = async (req, res) => {
   try {
-    const data = await Alert.aggregate([
-      { $match: { finalLabel: "ATTACK" } }, // only attacks
-      {
-        $group: {
-          _id: "$destinationIP",
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { count: -1 } },
-      { $limit: 5 }
+    const [
+      topSourceIPs,
+      topDestinationIPs,
+      attackCount,
+      benignCount,
+      highRiskCount,
+    ] = await Promise.all([
+      Alert.aggregate([
+        { $group: { _id: "$sourceIP", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+      ]),
+      Alert.aggregate([
+        { $group: { _id: "$destinationIP", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+      ]),
+      Alert.countDocuments({ finalLabel: "ATTACK" }),
+      Alert.countDocuments({ finalLabel: "BENIGN" }),
+      Alert.countDocuments({ probability: { $gte: 0.7 } }),
     ]);
 
-    res.json(data.map(d => ({
-      destination: d._id,
-      count: d.count
-    })));
+    res.json({
+      topSourceIPs,
+      topDestinationIPs,
+      attackCount,
+      benignCount,
+      highRiskCount,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+/* =====================================================
+   TOP ATTACKED DESTINATIONS (GLOBAL)
+===================================================== */
+exports.getTopAttackedDestinations = async (req, res) => {
+  try {
+    const data = await Alert.aggregate([
+      { $match: { finalLabel: "ATTACK" } },
+      { $group: { _id: "$destinationIP", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 },
+    ]);
 
-/**
- * =====================================================
- * Traffic Timeline (Aligned & UTC Safe)
- * GET /api/alerts/logs/timeline?range=1h|2h|24h|7d|30d|1y
- * =====================================================
- */
+    res.json(
+      data.map((d) => ({
+        destination: d._id,
+        count: d.count,
+      }))
+    );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/* =====================================================
+   TRAFFIC TIMELINE (ALIGNED & STABLE)
+===================================================== */
 exports.getTrafficTimeline = async (req, res) => {
   try {
     const { range = "1h" } = req.query;
 
-    const now = new Date();
-    let startTime;
-    let bucketSize; // milliseconds
+    const now = Date.now();
+    const config = {
+      "1h": { ms: 60 * 60 * 1000, bucket: 60 * 1000 },
+      "2h": { ms: 2 * 60 * 60 * 1000, bucket: 2 * 60 * 1000 },
+      "24h": { ms: 24 * 60 * 60 * 1000, bucket: 5 * 60 * 1000 },
+      "7d": { ms: 7 * 24 * 60 * 60 * 1000, bucket: 60 * 60 * 1000 },
+      "30d": { ms: 30 * 24 * 60 * 60 * 1000, bucket: 6 * 60 * 60 * 1000 },
+      "1y": { ms: 365 * 24 * 60 * 60 * 1000, bucket: 24 * 60 * 60 * 1000 },
+    };
 
-    switch (range) {
-      case "1h":
-        startTime = new Date(now.getTime() - 60 * 60 * 1000);
-        bucketSize = 60 * 1000; // 1 minute
-        break;
-
-      case "2h":
-        startTime = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-        bucketSize = 2 * 60 * 1000;
-        break;
-
-      case "24h":
-        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        bucketSize = 5 * 60 * 1000;
-        break;
-
-      case "7d":
-        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        bucketSize = 60 * 60 * 1000;
-        break;
-
-      case "30d":
-        startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        bucketSize = 6 * 60 * 60 * 1000;
-        break;
-
-      case "1y":
-        startTime = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        bucketSize = 24 * 60 * 60 * 1000;
-        break;
-
-      default:
-        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        bucketSize = 5 *60 * 1000;
-    }
+    const cfg = config[range] || config["24h"];
 
     const data = await Alert.aggregate([
-      { $match: { createdAt: { $gte: startTime } } },
+      { $match: { createdAt: { $gte: new Date(now - cfg.ms) } } },
       {
         $project: {
           bucket: {
             $toDate: {
               $subtract: [
                 { $toLong: "$createdAt" },
-                { $mod: [{ $toLong: "$createdAt" }, bucketSize] }
+                { $mod: [{ $toLong: "$createdAt" }, cfg.bucket] },
               ],
             },
           },
         },
       },
-      {
-        $group: {
-          _id: "$bucket",
-          count: { $sum: 1 }
-        },
-      },
+      { $group: { _id: "$bucket", count: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]);
 
     res.json(
-      data.map(d => ({
-        timestamp: new Date(d._id),
+      data.map((d) => ({
+        timestamp: d._id,
         count: d.count,
       }))
     );
