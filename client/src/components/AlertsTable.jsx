@@ -37,7 +37,7 @@ function AlertsTable() {
       </h2>
 
       {loading ? (
-        <p className="text-gray-500 text-sm">Loading alerts...</p>
+        <p className="text-gray-500 text-sm">Loading packets...</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm text-left">
@@ -88,7 +88,7 @@ function AlertsTable() {
                     colSpan="5"
                     className="text-center py-4 text-gray-500"
                   >
-                    No alerts yet
+                    No packets yet
                   </td>
                 </tr>
               )}
