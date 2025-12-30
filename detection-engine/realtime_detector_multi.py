@@ -26,9 +26,26 @@ import pandas as pd
 import math
 from collections import deque
 import signal
+import requests
+
+# ================= BACKEND CONFIG =================
+BACKEND_URL = "http://localhost:5000/alerts"
 
 # ignore stdout encoding errors
 sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
+
+# ================= Helper Function ================
+def send_to_backend(payload):
+    try:
+        requests.post(
+            BACKEND_URL,
+            json=payload,   # ⚠️ MUST be json=
+            timeout=1.5
+        )
+    except Exception as e:
+        print(f"[WARN] Backend send failed: {e}")
+
+# ================= SCAPY IMPORT ===================
 # Scapy optional for live mode
 try:
     from scapy.all import sniff, IP, TCP, UDP, ICMP
@@ -401,13 +418,19 @@ def run_live_mode(wrappers, extractor, threshold, log_file, smoothers,
         alert = 1 if agg_prob >= threshold else 0
 
         event_payload = {
-            "src": src,
-            "dst": dst,
-            "proto": proto,
-            "agg_prob": round(agg_prob, 6),
-            "alert": alert,
-            "per_model": {n: round(p, 6) for n, p in per_model}
+            "timestamp": ts,
+            "sourceIP": src,
+            "destinationIP": dst,
+            "modelUsed": "ENSEMBLE",
+            "probability": round(agg_prob, 6),
+            "finalLabel": "ATTACK" if alert else "BENIGN",
+
+            # 🔥 IMPORTANT
+            "per_model": {n: round(p, 6) for n, p in per_model},
+            "features": features
         }
+        send_to_backend(event_payload)
+
 
         if run_mode == "service":
             emit_event("prediction", {

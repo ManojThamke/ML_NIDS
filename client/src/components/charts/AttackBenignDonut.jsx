@@ -47,7 +47,7 @@ function AttackBenignDonut({ stats }) {
         </div>
       </div>
 
-      <p className="text-m text-gray-500 text-center mt-3">
+      <p className="text-sm text-gray-500 text-center mt-3">
         <span className="text-red-500">{attackPercent}% Attack🔴</span> 🔹  <span className="text-green-500"> {benignPercent}% Benign🟢</span>
       </p>
     </div>
