@@ -6,6 +6,7 @@ const connectDB = require("./config/db");
 const alertRoutes = require("./routes/alertRoutes");
 const monitorRoutes = require("./routes/monitorRoutes");
 const modelRoutes = require("./routes/modelRoutes")
+const statsRoutes = require("./routes/statsRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use("/api/alerts", alertRoutes);   // Alerts API
 app.use("/api/monitor", monitorRoutes); // Start/Stop monitoring
 app.use("/api/model-metrics", modelRoutes);  //models comparison
+app.use("/api/stats", require("./routes/statsRoutes")); // Stats API
 
 /* =======================
    Health Check

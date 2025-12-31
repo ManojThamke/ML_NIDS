@@ -1,29 +1,11 @@
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import PerModelProbabilityChart from "./charts/PerModelProbabilityChart";
 
 function LogDetailsModal({ log, onClose }) {
   if (!log) return null;
 
-  /* =====================
-     Prepare Per-Model Data
-  ===================== */
-  const perModelData = log.perModel
-    ? Object.entries(log.perModel).map(([model, prob]) => ({
-        model,
-        probability: +(prob * 100).toFixed(2),
-      }))
-    : [];
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-      <div className="bg-white rounded-2xl w-[900px] max-h-[90vh] overflow-y-auto p-6 relative shadow-xl">
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative shadow-xl">
 
         {/* ❌ Close */}
         <button
@@ -44,43 +26,17 @@ function LogDetailsModal({ log, onClose }) {
           <p><b>Destination IP:</b> {log.destinationIP}</p>
 
           <p><b>Final Probability:</b> {(log.probability * 100).toFixed(2)}%</p>
-          <p><b>Model Used:</b> {log.modelUsed || "Ensemble"}</p>
+          <p><b>Model Used:</b> {log.modelUsed || "ENSEMBLE"}</p>
         </div>
 
         {/* ===== PER MODEL PROBABILITY ===== */}
-        <div className="mb-8">
+        <div className="mb-10">
           <h3 className="font-semibold mb-3">
-            Per-Model Probability
+            Per-Model Probability (Explainability)
           </h3>
 
-          {perModelData.length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              No per-model data available
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={perModelData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="model" />
-                <YAxis domain={[0, 100]} unit="%" />
-                <Tooltip
-                  formatter={(v) => `${v}%`}
-                  contentStyle={{
-                    backgroundColor: "#111827",
-                    color: "#f9fafb",
-                    borderRadius: "8px",
-                    border: "none",
-                    fontSize: "12px",
-                  }}
-                />
-                <Bar
-                  dataKey="probability"
-                  fill="#ec4899"
-                  radius={[6, 6, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          {/* ✅ PASS PROP CORRECTLY */}
+          <PerModelProbabilityChart perModel={log.perModel} />
         </div>
 
         {/* ===== EXTRACTED FEATURES ===== */}
@@ -89,12 +45,12 @@ function LogDetailsModal({ log, onClose }) {
             Extracted Features
           </h3>
 
-          {!log.features ? (
+          {!log.features || Object.keys(log.features).length === 0 ? (
             <p className="text-gray-500 text-sm">
               No feature data available
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               {Object.entries(log.features).map(([key, value]) => (
                 <div
                   key={key}

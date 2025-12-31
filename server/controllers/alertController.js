@@ -10,14 +10,21 @@ exports.createAlert = async (req, res) => {
   try {
     const body = { ...req.body };
 
-    // ✅ Parse JSON strings from Python
+    // ✅ FIX: per_model may already be an object
     if (body.per_model) {
-      body.perModel = JSON.parse(body.per_model);
+      if (typeof body.per_model === "string") {
+        body.perModel = JSON.parse(body.per_model);
+      } else {
+        body.perModel = body.per_model;
+      }
       delete body.per_model;
     }
 
+    // ✅ FIX: features may already be an object
     if (body.features) {
-      body.features = JSON.parse(body.features);
+      if (typeof body.features === "string") {
+        body.features = JSON.parse(body.features);
+      }
     }
 
     const alert = new Alert(body);
@@ -29,6 +36,7 @@ exports.createAlert = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
 
 /* =====================================================
    DASHBOARD TABLE (LATEST ONLY)

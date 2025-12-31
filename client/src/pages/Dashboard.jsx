@@ -1,5 +1,5 @@
 import MonitoringControl from "../components/MonitoringControl";
-import Stats from "../components/Stats";
+import ControlStats from "../components/ControlStats";
 import AttackBenignDonut from "../components/charts/AttackBenignDonut";
 import AttackProbabilityArea from "../components/charts/AttackProbabilityArea";
 import AlertsTable from "../components/AlertsTable";
@@ -17,8 +17,7 @@ function Dashboard({ alerts, stats, monitoring, setMonitoring }) {
       />
 
       {/* Stats Cards */}
-      <Stats stats={stats} monitoring={monitoring} />
-
+      <ControlStats stats={stats} monitoring={monitoring} />
       {/* Charts Row — EXACTLY 3 CHARTS */}
       <div className="grid grid-cols-12 gap-6">
 

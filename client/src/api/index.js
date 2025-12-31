@@ -16,3 +16,5 @@ export const exportLogs = (params) => API.get("/alerts/export", { params, respon
 export const getLogsInsights = () => API.get("/alerts/logs/insights");
 export const getTrafficTimeline = (range = "24h") => API.get(`/alerts/logs/timeline?range=${range}`);
 export const getTopDestinations = () => API.get("/alerts/logs/top-destinations");
+export const getDetectionDistribution = () => API.get("/stats/detection-distribution");
+export const getProbabilityBands = () => API.get("/stats/probability-bands");

@@ -10,6 +10,7 @@ import {
 import Layout from "./layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Logs from "./pages/Logs";   // ✅ ADD THIS
+import StatsPage from "./pages/Stats"; // Stats
 
 function App() {
   const [alerts, setAlerts] = useState([]);
@@ -56,9 +57,10 @@ function App() {
 
         {/* ✅ Logs Page */}
         <Route path="/logs" element={<Logs />} />
+        {/* ✅ Stats Page */}
+        <Route path="/stats" element={<StatsPage />} />
 
         {/* (Later) */}
-        {/* <Route path="/stats" element={<StatsPage />} /> */}
         {/* <Route path="/models" element={<ModelsPage />} /> */}
         {/* <Route path="/settings" element={<SettingsPage />} /> */}
       </Routes>

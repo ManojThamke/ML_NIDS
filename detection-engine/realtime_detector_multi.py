@@ -29,7 +29,7 @@ import signal
 import requests
 
 # ================= BACKEND CONFIG =================
-BACKEND_URL = "http://localhost:5000/alerts"
+BACKEND_URL = "http://localhost:5000/api/alerts"
 
 # ignore stdout encoding errors
 sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
