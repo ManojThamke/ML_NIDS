@@ -12,19 +12,19 @@ function Sidebar() {
     `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
       isActive
         ? "bg-pink-200 text-pink-700 font-semibold"
-        : "text-gray-700 hover:bg-pink-50"
+        : "text-gray-700 hover:bg-pink-50 hover:text-pink-700"
     }`;
 
   return (
-    <div className="w-56 bg-pink-100 p-4 flex flex-col">
+    <aside className="fixed left-0 top-0 h-screen w-56 bg-pink-50 p-4 flex flex-col border-r border-pink-100 z-50">
 
-      {/* Logo / Title */}
+      {/* Logo */}
       <h2 className="text-xl font-bold text-pink-600 mb-6 ml-3">
         ML-NIDS
       </h2>
 
       {/* Navigation */}
-      <nav className="space-y-2 ml-1 text-sm">
+      <nav className="space-y-1 ml-1 text-sm">
         <NavLink to="/" className={linkClass}>
           <MdDashboard size={18} />
           Dashboard
@@ -53,9 +53,9 @@ function Sidebar() {
 
       {/* Footer */}
       <div className="mt-auto text-xs text-gray-500 ml-3">
-        © NIDS | Manoj Thamke & Team
+        © ML-NIDS | Manoj Thamke & Team
       </div>
-    </div>
+    </aside>
   );
 }
 

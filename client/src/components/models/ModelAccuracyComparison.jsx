@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -10,7 +9,6 @@ import {
   Cell,
   LabelList,
 } from "recharts";
-import { getModelMetrics } from "../../api";
 
 /* 🎨 ML-NIDS pastel palette */
 const COLORS = [
@@ -23,8 +21,6 @@ const COLORS = [
   "#a7f3d0",
   "#fca5a5",
   "#fbcfe8",
-  "#ddd6fe",
-  "#fecaca",
 ];
 
 /* Wrapped X-axis labels */
@@ -48,20 +44,21 @@ const CustomTick = ({ x, y, payload }) => {
   );
 };
 
-function ModelComparisonChart() {
-  const [data, setData] = useState([]);
+function ModelAccuracyComparison({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border">
+        <p className="text-sm text-gray-400">
+          No model accuracy data available
+        </p>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    getModelMetrics()
-      .then((res) => {
-        const formatted = res.data.map((m) => ({
-          ...m,
-          accuracyPercent: +(m.accuracy * 100).toFixed(2),
-        }));
-        setData(formatted);
-      })
-      .catch(console.error);
-  }, []);
+  const formatted = data.map((m) => ({
+    modelName: m.modelName,
+    accuracyPercent: +(m.accuracy * 100).toFixed(2),
+  }));
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
@@ -73,11 +70,11 @@ function ModelComparisonChart() {
       <div className="h-[235px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={data}
+            data={formatted}
             margin={{ top: 12, right: 10, left: 0, bottom: 6 }}
             barCategoryGap="18%"
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" />
 
             <XAxis
               dataKey="modelName"
@@ -97,8 +94,8 @@ function ModelComparisonChart() {
 
             <Bar
               dataKey="accuracyPercent"
-              barSize={32}
               radius={[6, 6, 0, 0]}
+              barSize={32}
             >
               {/* Percentage labels */}
               <LabelList
@@ -108,19 +105,15 @@ function ModelComparisonChart() {
                 fontSize={11}
                 fill="#6b7280"
               />
-
-              {data.map((_, index) => (
-                <Cell
-                  key={index}
-                  fill={COLORS[index % COLORS.length]}
-                />
+              {formatted.map((_, i) => (
+                <Cell key={i} fill={COLORS[i % COLORS.length]} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation line */}
+      {/* Explanation line (tight & readable) */}
       <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
         Accuracy shows overall correctness but does not reflect false alarms.
       </p>
@@ -128,4 +121,4 @@ function ModelComparisonChart() {
   );
 }
 
-export default ModelComparisonChart;
+export default ModelAccuracyComparison;

@@ -1,6 +1,7 @@
 const { spawn } = require("child_process");
 const path = require("path");
 const Alert = require("../models/Alert");
+const Settings = require("../models/Settings");
 
 let monitorProcess = null;
 
@@ -14,63 +15,61 @@ const detectorPath = path.join(
 
 const projectRoot = path.join(__dirname, "..", "..");
 
-const startMonitoring = (req, res) => {
+const startMonitoring = async (req, res) => {
   if (monitorProcess) {
     return res.status(400).json({ message: "Monitoring already running" });
   }
 
-  monitorProcess = spawn(
-    "python",
-    [
-      detectorPath,
-      "--models", "rf,lgb,xgb,svm,knn,mlp,naive_bayes",
-      "--agg", "mean",
-      "--smooth", "3",
-      "--threshold", "0.4",
-      "--iface", "Wi-Fi",
-      "--filter", "tcp or udp",
-      "--log", "logs/realtime_ensemble_live.csv",
-      "--run_mode", "service"
-    ],
-    {
-      cwd: projectRoot,
-      shell: false
-    }
-  );
+  const settings = await Settings.findOne().sort({ updatedAt: -1 });
+
+  if (!settings) {
+    return res.status(400).json({
+      message: "No detection settings found. Please configure settings first.",
+    });
+  }
+
+  console.log("🚀 Starting detector with settings:", settings);
+
+  /* ================= BUILD ARGUMENTS ================= */
+  const args = [
+    detectorPath,
+    "--models", settings.models.join(","),
+    "--agg", settings.aggregation,
+    "--smooth", String(settings.smoothing),
+    "--threshold", String(settings.threshold),
+    "--log", "logs/realtime_ensemble_live.csv",
+    "--run_mode", "service",
+  ];
+
+  // ✅ ONLY add iface if real value exists
+  if (settings.interface && settings.interface.trim() !== "") {
+    args.push("--iface", settings.interface);
+  }
+
+  console.log("🐍 Python args:", args);
+
+  monitorProcess = spawn("python", args, {
+    cwd: projectRoot,
+    shell: false,
+  });
 
   monitorProcess.stdout.on("data", async (data) => {
     const text = data.toString().trim();
     console.log(text);
-
-    try {
-      const parsed = JSON.parse(text);
-
-      if (parsed.event === "prediction") {
-        const d = parsed.data;
-
-        await Alert.create({
-          timestamp: parsed.timestamp,
-          sourceIP: d.src,
-          destinationIP: d.dst,
-          modelUsed: "ENSEMBLE",
-          probability: d.agg_prob,
-          finalLabel: d.alert === 1 ? "ATTACK" : "BENIGN",
-        });
-      }
-    } catch (err) {}
   });
 
   monitorProcess.stderr.on("data", (data) => {
-    console.error("❌", data.toString());
+    console.error("❌ Detector error:", data.toString());
   });
 
-  monitorProcess.on("close", () => {
+  monitorProcess.on("close", (code) => {
+    console.log("🛑 Monitoring stopped. Exit code:", code);
     monitorProcess = null;
-    console.log("🛑 Monitoring stopped");
   });
 
-  res.json({ message: "Monitoring started" });
+  res.json({ message: "Monitoring started with saved settings" });
 };
+
 
 const stopMonitoring = (req, res) => {
   if (!monitorProcess) {

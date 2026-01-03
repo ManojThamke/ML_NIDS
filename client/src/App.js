@@ -11,6 +11,8 @@ import Layout from "./layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Logs from "./pages/Logs";   // ✅ ADD THIS
 import StatsPage from "./pages/Stats"; // Stats
+import ModelsPage from "./pages/Models";
+import SettingsPage from "./pages/Settings";
 
 function App() {
   const [alerts, setAlerts] = useState([]);
@@ -59,10 +61,10 @@ function App() {
         <Route path="/logs" element={<Logs />} />
         {/* ✅ Stats Page */}
         <Route path="/stats" element={<StatsPage />} />
+        <Route path="/models" element={<ModelsPage />} />
 
         {/* (Later) */}
-        {/* <Route path="/models" element={<ModelsPage />} /> */}
-        {/* <Route path="/settings" element={<SettingsPage />} /> */}
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>
   );

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -7,25 +6,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
   LabelList,
 } from "recharts";
-import { getModelMetrics } from "../../api";
 
-/* 🎨 ML-NIDS pastel palette */
-const COLORS = [
-  "#93c5fd",
-  "#7dd3fc",
-  "#fdba74",
-  "#c4b5fd",
-  "#86efac",
-  "#fde68a",
-  "#a7f3d0",
-  "#fca5a5",
-  "#fbcfe8",
-  "#ddd6fe",
-  "#fecaca",
-];
+const COLOR_F1 = "#c4b5fd";
 
 /* Wrapped X-axis labels */
 const CustomTick = ({ x, y, payload }) => {
@@ -39,7 +23,7 @@ const CustomTick = ({ x, y, payload }) => {
         fontWeight={500}
       >
         {words.map((word, i) => (
-          <tspan key={i} x={0} dy={i === 0 ? 0 : 12}>
+          <tspan key={i} x="0" dy={i === 0 ? 0 : 12}>
             {word}
           </tspan>
         ))}
@@ -48,43 +32,58 @@ const CustomTick = ({ x, y, payload }) => {
   );
 };
 
-function ModelComparisonChart() {
-  const [data, setData] = useState([]);
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
 
-  useEffect(() => {
-    getModelMetrics()
-      .then((res) => {
-        const formatted = res.data.map((m) => ({
-          ...m,
-          accuracyPercent: +(m.accuracy * 100).toFixed(2),
-        }));
-        setData(formatted);
-      })
-      .catch(console.error);
-  }, []);
+  return (
+    <div className="bg-white border rounded-lg px-4 py-2 shadow-lg">
+      <p className="text-sm font-semibold text-gray-700 mb-1">
+        {label}
+      </p>
+      <p className="text-sm text-violet-600">
+        F1 Score: {payload[0].value}%
+      </p>
+    </div>
+  );
+};
+
+function F1ScoreComparison({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border">
+        <p className="text-sm text-gray-400">
+          No F1 score data available
+        </p>
+      </div>
+    );
+  }
+
+  const formatted = data.map((m) => ({
+    modelName: m.modelName,
+    f1: +(m.f1 * 100).toFixed(2),
+  }));
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
       <h3 className="font-semibold mb-2 text-gray-700">
-        Model Accuracy Comparison
+        F1 Score Comparison
       </h3>
 
-      {/* 🔥 Fixed-height chart area */}
+      {/* Fixed-height chart */}
       <div className="h-[235px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={data}
-            margin={{ top: 12, right: 10, left: 0, bottom: 6 }}
-            barCategoryGap="18%"
+            data={formatted}
+            margin={{ top: 12, right: 20, left: 0, bottom: 6 }}
+            barCategoryGap="24%"
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" />
 
             <XAxis
               dataKey="modelName"
               tick={<CustomTick />}
               interval={0}
               height={45}
-              tickMargin={6}
             />
 
             <YAxis
@@ -93,39 +92,35 @@ function ModelComparisonChart() {
               padding={{ top: 18 }}
             />
 
-            <Tooltip formatter={(v) => `${v}%`} />
+            <Tooltip
+              content={<CustomTooltip />}
+              wrapperStyle={{ zIndex: 1000 }}
+            />
 
             <Bar
-              dataKey="accuracyPercent"
-              barSize={32}
+              dataKey="f1"
+              fill={COLOR_F1}
               radius={[6, 6, 0, 0]}
+              barSize={30}
             >
-              {/* Percentage labels */}
               <LabelList
-                dataKey="accuracyPercent"
+                dataKey="f1"
                 position="top"
                 formatter={(v) => `${v}%`}
                 fontSize={11}
                 fill="#6b7280"
               />
-
-              {data.map((_, index) => (
-                <Cell
-                  key={index}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation line */}
+      {/* Tight explanation */}
       <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
-        Accuracy shows overall correctness but does not reflect false alarms.
+        F1 score balances precision and recall for intrusion detection.
       </p>
     </div>
   );
 }
 
-export default ModelComparisonChart;
+export default F1ScoreComparison;

@@ -21,7 +21,6 @@ const COLORS = [
 ];
 
 
-/* Clean dashboard tooltip */
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload || !payload.length) return null;
 
@@ -65,7 +64,7 @@ function TopAttackedDestinationsChart() {
       </h3>
 
       {/* 🔥 Fixed-height chart area */}
-      <div className="h-[240px]">
+      <div className="h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}

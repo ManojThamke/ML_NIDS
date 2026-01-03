@@ -75,13 +75,13 @@ const CustomTooltip = ({ active, payload }) => {
           <XAxis
             dataKey="model"
             tick={{ fontSize: 12 }}
-            axisLine={false}
+            axisLine={true}
           />
 
           <YAxis
             domain={[0, 100]}
             tickFormatter={(v) => `${v}%`}
-            axisLine={false}
+            axisLine={true}
             tick={{ fontSize: 12 }}
           />
 
