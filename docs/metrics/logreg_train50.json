@@ -1,0 +1,13 @@
+{
+    "model": "LogisticRegression",
+    "train_percentage": 50,
+    "test_percentage": 50,
+    "accuracy": 0.9569334790014908,
+    "precision": 0.8813060517900507,
+    "recall": 0.8609573918353924,
+    "f1": 0.8710128913443831,
+    "roc_auc": 0.987950657813432,
+    "train_samples": 1260399,
+    "test_samples": 1260399,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\logreg_train50.pkl"
+}

@@ -1,0 +1,13 @@
+{
+    "model": "KNN",
+    "training_split": "70/30",
+    "subset_used": false,
+    "accuracy": 0.9968951655559082,
+    "precision": 0.99266740018862,
+    "recall": 0.9889212508416717,
+    "f1": 0.9907907845090641,
+    "roc_auc": 0.9970431771114064,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "training_time_sec": 410.05
+}

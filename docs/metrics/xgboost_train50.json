@@ -1,0 +1,14 @@
+{
+    "model": "XGBoost",
+    "train_percentage": 50,
+    "test_percentage": 50,
+    "accuracy": 0.9991780380657236,
+    "precision": 0.9965449022071371,
+    "recall": 0.9985953868558275,
+    "f1": 0.9975690908493634,
+    "roc_auc": 0.9999748791993073,
+    "train_samples": 1260399,
+    "test_samples": 1260399,
+    "training_time_seconds": 21.73,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\xgboost_train50.pkl"
+}

@@ -1,0 +1,13 @@
+{
+    "model": "SupportVectorMachine",
+    "training_split": "70/30",
+    "subset_used": true,
+    "accuracy": 0.8978111111111111,
+    "precision": 0.6287147819374759,
+    "recall": 0.9645394736842106,
+    "f1": 0.7612347153352891,
+    "roc_auc": 0.9807497664825499,
+    "train_samples": 210000,
+    "test_samples": 90000,
+    "training_time_sec": 6492.99
+}

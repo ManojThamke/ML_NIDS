@@ -1,0 +1,13 @@
+{
+    "model": "RandomForest",
+    "train_percentage": 70,
+    "test_percentage": 30,
+    "accuracy": 0.9986049402306146,
+    "precision": 0.9965347194455552,
+    "recall": 0.9952005136155087,
+    "f1": 0.9958671696575823,
+    "roc_auc": 0.9997951911176468,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\random_forest_train70.pkl"
+}

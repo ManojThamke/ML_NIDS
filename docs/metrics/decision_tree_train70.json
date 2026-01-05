@@ -1,0 +1,13 @@
+{
+    "model": "DecisionTree",
+    "train_percentage": 70,
+    "test_percentage": 30,
+    "accuracy": 0.9984727070771183,
+    "precision": 0.9960105028020535,
+    "recall": 0.9949421399602261,
+    "f1": 0.9954760347346527,
+    "roc_auc": 0.9976489306596892,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\decision_tree_train70.pkl"
+}

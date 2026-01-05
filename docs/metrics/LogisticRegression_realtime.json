@@ -1,0 +1,12 @@
+{
+    "model": "LogisticRegression",
+    "training_split": "70/30",
+    "accuracy": 0.9239910610388237,
+    "precision": 0.965252295097169,
+    "recall": 0.5704890308639076,
+    "f1": 0.7171335915239975,
+    "roc_auc": 0.945671709783592,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "training_time_sec": 11.4
+}

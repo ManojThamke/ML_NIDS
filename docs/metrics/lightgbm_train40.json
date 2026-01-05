@@ -1,0 +1,14 @@
+{
+    "model": "LightGBM",
+    "train_percentage": 40,
+    "test_percentage": 60,
+    "accuracy": 0.9990770119783481,
+    "precision": 0.9965017061511341,
+    "recall": 0.9980387167492024,
+    "f1": 0.9972696192331464,
+    "roc_auc": 0.9999746881725454,
+    "train_samples": 1008319,
+    "test_samples": 1512479,
+    "training_time_seconds": 23.64,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\lightgbm_train40.pkl"
+}

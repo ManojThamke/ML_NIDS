@@ -1,0 +1,15 @@
+{
+    "model": "KNN",
+    "k": 6,
+    "train_percentage": 70,
+    "test_percentage": 30,
+    "accuracy": 0.9881666666666666,
+    "precision": 0.973565182430395,
+    "recall": 0.9558867067995658,
+    "f1": 0.964644955681705,
+    "roc_auc": 0.9964936079621453,
+    "train_samples": 140000,
+    "test_samples": 60000,
+    "subset_size": 200000,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\knn_k6_train70.pkl"
+}

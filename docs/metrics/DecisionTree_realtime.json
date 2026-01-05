@@ -1,0 +1,13 @@
+{
+    "model": "DecisionTree",
+    "training_split": "70/30",
+    "subset_used": false,
+    "accuracy": 0.9960012694382736,
+    "precision": 0.9896338877632757,
+    "recall": 0.9866585239817729,
+    "f1": 0.9881439661256175,
+    "roc_auc": 0.9937196882146929,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "training_time_sec": 20.95
+}

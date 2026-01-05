@@ -1,0 +1,13 @@
+{
+    "model": "GradientBoosting",
+    "training_split": "70/30",
+    "subset_used": false,
+    "accuracy": 0.9924560985930393,
+    "precision": 0.9887835791598901,
+    "recall": 0.9662939822426834,
+    "f1": 0.97740942983064,
+    "roc_auc": 0.9981714936183413,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "training_time_sec": 616.42
+}

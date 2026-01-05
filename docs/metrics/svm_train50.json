@@ -1,0 +1,16 @@
+{
+    "model": "SupportVectorMachine",
+    "kernel": "rbf",
+    "subset_size": 150000,
+    "train_percentage": 50,
+    "test_percentage": 50,
+    "accuracy": 0.95004,
+    "precision": 0.7794136073173787,
+    "recall": 0.9821583642535723,
+    "f1": 0.8691187257675783,
+    "roc_auc": 0.9934682153432847,
+    "train_samples": 75000,
+    "test_samples": 75000,
+    "training_time_seconds": 819.51,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\svm_train50.pkl"
+}

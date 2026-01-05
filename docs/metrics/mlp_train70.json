@@ -1,0 +1,14 @@
+{
+    "model": "MultiLayerPerceptron",
+    "train_percentage": 70,
+    "test_percentage": 30,
+    "accuracy": 0.9967748333862266,
+    "precision": 0.9922440415851387,
+    "recall": 0.9886315591675671,
+    "f1": 0.990434506371113,
+    "roc_auc": 0.9997958270520437,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "training_time_seconds": 149.45,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\mlp_train70.pkl"
+}

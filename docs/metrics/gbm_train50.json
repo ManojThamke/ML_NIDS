@@ -1,0 +1,13 @@
+{
+    "model": "GradientBoosting",
+    "train_percentage": 50,
+    "test_percentage": 50,
+    "accuracy": 0.996524909968986,
+    "precision": 0.9952821224272601,
+    "recall": 0.9840888805374172,
+    "f1": 0.989653852876843,
+    "roc_auc": 0.9990703156919309,
+    "train_samples": 1260399,
+    "test_samples": 1260399,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\gbm_train50.pkl"
+}

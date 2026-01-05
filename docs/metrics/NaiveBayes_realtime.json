@@ -1,0 +1,12 @@
+{
+    "model": "NaiveBayes",
+    "training_split": "70/30",
+    "accuracy": 0.3306886702634084,
+    "precision": 0.19951597074227348,
+    "recall": 0.9836833121936707,
+    "f1": 0.3317455204136059,
+    "roc_auc": 0.8745140084824561,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "training_time_sec": 1.28
+}

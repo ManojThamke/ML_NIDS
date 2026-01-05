@@ -1,0 +1,13 @@
+{
+    "model": "MultiLayerPerceptron",
+    "training_split": "70/30",
+    "subset_used": false,
+    "accuracy": 0.9953374590077224,
+    "precision": 0.9911961525683821,
+    "recall": 0.9811074051455505,
+    "f1": 0.9861259758247293,
+    "roc_auc": 0.999244630670691,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "training_time_sec": 274.85
+}

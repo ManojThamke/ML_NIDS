@@ -1,0 +1,13 @@
+{
+    "model": "NaiveBayes",
+    "train_percentage": 70,
+    "test_percentage": 30,
+    "accuracy": 0.3802496561938009,
+    "precision": 0.2132946752010548,
+    "recall": 0.9930004227932541,
+    "f1": 0.35116067868692685,
+    "roc_auc": 0.6619662095871832,
+    "train_samples": 1764558,
+    "test_samples": 756240,
+    "model_path": "C:\\Users\\Manoj\\Downloads\\BE Project\\ML_NIDS\\detection-engine\\..\\models\\phase1\\naive_bayes_train70.pkl"
+}

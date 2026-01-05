@@ -1,9 +1,7 @@
 import os
 import json
 import joblib
-import time
-
-from sklearn.neural_network import MLPClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -28,25 +26,7 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # TRAINING CONFIG
 # ================================
 TRAIN_SIZES = [0.4, 0.5, 0.6, 0.7]
-MODEL_NAME = "MultiLayerPerceptron"
-
-# ================================
-# MODEL CONFIG
-# ================================
-MLP_PARAMS = {
-    "hidden_layer_sizes": (128, 64),
-    "activation": "relu",
-    "solver": "adam",
-    "alpha": 0.0001,
-    "batch_size": 1024,
-    "learning_rate": "adaptive",
-    "learning_rate_init": 0.001,
-    "max_iter": 50,
-    "early_stopping": True,
-    "n_iter_no_change": 5,
-    "random_state": 42,
-    "verbose": True
-}
+MODEL_NAME = "RandomForest"
 
 # ================================
 # TRAIN & EVALUATE
@@ -55,16 +35,14 @@ for train_size in TRAIN_SIZES:
     train_pct = int(train_size * 100)
     print(f"\n🚀 Training {MODEL_NAME} (Train {train_pct}%)")
 
-    start_time = time.time()
-
-    # 🔹 SAME SPLIT UTILITY AS GBM
     X_train, X_test, y_train, y_test = get_train_test_split(train_size)
 
-    print(f"Train samples: {len(X_train)}")
-    print(f"Test samples : {len(X_test)}")
-    print(f"Features     : {X_train.shape[1]}")
+    model = RandomForestClassifier(
+        n_estimators=100,
+        random_state=42,
+        n_jobs=-1
+    )
 
-    model = MLPClassifier(**MLP_PARAMS)
     model.fit(X_train, y_train)
 
     # ----------------------------
@@ -72,7 +50,7 @@ for train_size in TRAIN_SIZES:
     # ----------------------------
     model_path = os.path.join(
         MODELS_DIR,
-        f"mlp_train{train_pct}.pkl"
+        f"random_forest_train{train_pct}.pkl"
     )
     joblib.dump(model, model_path)
 
@@ -93,19 +71,16 @@ for train_size in TRAIN_SIZES:
         "roc_auc": roc_auc_score(y_test, y_prob),
         "train_samples": len(X_train),
         "test_samples": len(X_test),
-        "training_time_seconds": round(time.time() - start_time, 2),
         "model_path": model_path
     }
 
     metrics_path = os.path.join(
         METRICS_DIR,
-        f"mlp_train{train_pct}.json"
+        f"random_forest_train{train_pct}.json"
     )
 
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=4)
 
-    print(f"✅ Model saved  : {model_path}")
+    print(f"✅ Model saved: {model_path}")
     print(f"✅ Metrics saved: {metrics_path}")
-
-print("\n🎉 MLP TRAINING COMPLETED FOR ALL SPLITS")

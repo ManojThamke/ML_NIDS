@@ -3,7 +3,7 @@ import ControlStats from "../components/ControlStats";
 import AttackBenignDonut from "../components/charts/AttackBenignDonut";
 import AttackProbabilityArea from "../components/charts/AttackProbabilityArea";
 import AlertsTable from "../components/AlertsTable";
-import ModelComparisonChart from "../components/charts/ModelComparisonChart";
+// import ModelComparisonChart from "../components/charts/ModelComparisonChart";
 import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
 import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
 function Dashboard({ alerts, stats, monitoring, setMonitoring }) {
@@ -27,14 +27,14 @@ function Dashboard({ alerts, stats, monitoring, setMonitoring }) {
         </div>
 
         {/* Line */}
-        <div className="col-span-4">
+        <div className="col-span-9">
           <AttackProbabilityArea alerts={alerts} />
         </div>
 
         {/* Bar (ONLY ONCE) */}
-        <div className="col-span-5">
+        {/* <div className="col-span-5">
           <ModelComparisonChart />
-        </div>
+        </div> */}
 
         <div className="col-span-8">
           <TrafficTimelineChart />

@@ -1,9 +1,9 @@
 import os
 import json
-import joblib
 import time
+import joblib
 
-from sklearn.neural_network import MLPClassifier
+import lightgbm as lgb
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -28,24 +28,22 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # TRAINING CONFIG
 # ================================
 TRAIN_SIZES = [0.4, 0.5, 0.6, 0.7]
-MODEL_NAME = "MultiLayerPerceptron"
+MODEL_NAME = "LightGBM"
 
 # ================================
-# MODEL CONFIG
+# LIGHTGBM PARAMETERS (CPU SAFE)
 # ================================
-MLP_PARAMS = {
-    "hidden_layer_sizes": (128, 64),
-    "activation": "relu",
-    "solver": "adam",
-    "alpha": 0.0001,
-    "batch_size": 1024,
-    "learning_rate": "adaptive",
-    "learning_rate_init": 0.001,
-    "max_iter": 50,
-    "early_stopping": True,
-    "n_iter_no_change": 5,
-    "random_state": 42,
-    "verbose": True
+LGB_PARAMS = {
+    "n_estimators": 200,
+    "learning_rate": 0.1,
+    "num_leaves": 127,
+    "max_depth": -1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "objective": "binary",
+    "metric": "binary_logloss",
+    "n_jobs": -1,
+    "random_state": 42
 }
 
 # ================================
@@ -57,14 +55,14 @@ for train_size in TRAIN_SIZES:
 
     start_time = time.time()
 
-    # 🔹 SAME SPLIT UTILITY AS GBM
+    # 🔹 SAME SPLIT UTILITY AS ALL MODELS
     X_train, X_test, y_train, y_test = get_train_test_split(train_size)
 
     print(f"Train samples: {len(X_train)}")
     print(f"Test samples : {len(X_test)}")
     print(f"Features     : {X_train.shape[1]}")
 
-    model = MLPClassifier(**MLP_PARAMS)
+    model = lgb.LGBMClassifier(**LGB_PARAMS)
     model.fit(X_train, y_train)
 
     # ----------------------------
@@ -72,7 +70,7 @@ for train_size in TRAIN_SIZES:
     # ----------------------------
     model_path = os.path.join(
         MODELS_DIR,
-        f"mlp_train{train_pct}.pkl"
+        f"lightgbm_train{train_pct}.pkl"
     )
     joblib.dump(model, model_path)
 
@@ -99,7 +97,7 @@ for train_size in TRAIN_SIZES:
 
     metrics_path = os.path.join(
         METRICS_DIR,
-        f"mlp_train{train_pct}.json"
+        f"lightgbm_train{train_pct}.json"
     )
 
     with open(metrics_path, "w") as f:
@@ -108,4 +106,4 @@ for train_size in TRAIN_SIZES:
     print(f"✅ Model saved  : {model_path}")
     print(f"✅ Metrics saved: {metrics_path}")
 
-print("\n🎉 MLP TRAINING COMPLETED FOR ALL SPLITS")
+print("\n🎉 LIGHTGBM TRAINING COMPLETED FOR ALL SPLITS")
