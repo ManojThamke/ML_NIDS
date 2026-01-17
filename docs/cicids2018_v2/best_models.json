@@ -1,0 +1,40 @@
+{
+    "best_f1_model": [
+        "KNN",
+        {
+            "accuracy": 0.9849,
+            "precision": 0.9731,
+            "recall": 0.937,
+            "f1_score": 0.9547
+        }
+    ],
+    "top_3_models": [
+        [
+            "KNN",
+            {
+                "accuracy": 0.9849,
+                "precision": 0.9731,
+                "recall": 0.937,
+                "f1_score": 0.9547
+            }
+        ],
+        [
+            "RandomForest",
+            {
+                "accuracy": 0.9823,
+                "precision": 0.9566,
+                "recall": 0.938,
+                "f1_score": 0.9472
+            }
+        ],
+        [
+            "GradientBoosting",
+            {
+                "accuracy": 0.9821,
+                "precision": 0.9687,
+                "recall": 0.9244,
+                "f1_score": 0.946
+            }
+        ]
+    ]
+}

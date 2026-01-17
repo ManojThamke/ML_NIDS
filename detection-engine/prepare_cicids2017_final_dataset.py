@@ -7,9 +7,9 @@ import numpy as np
 # PATH CONFIG
 # ================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "..", "data", "cicids2017")
+DATA_DIR = os.path.join(BASE_DIR, "..", "data", "cicids2018")
 OUTPUT_DIR = os.path.join(BASE_DIR, "..", "data", "final")
-OUTPUT_FILE = "cicids2017_final_cleaned.csv"
+OUTPUT_FILE = "cicids2018_final_cleaned.csv"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -128,3 +128,4 @@ df.to_csv(output_path, index=False)
 
 print("\n✅ FINAL CLEANED DATASET SAVED AT:")
 print(output_path)
+

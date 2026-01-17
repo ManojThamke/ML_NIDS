@@ -1,0 +1,47 @@
+{
+    "selected_model": "LightGBM_v2.pkl",
+    "selection_criteria": "Highest average F1-score with ROC\u2013AUC as tie-breaker",
+    "metrics": {
+        "avg_f1": 0.9566,
+        "avg_roc_auc": 0.9924
+    },
+    "evaluated_models": {
+        "LogisticRegression": {
+            "avg_f1": 0.4029,
+            "avg_roc_auc": 0.8839
+        },
+        "DecisionTree": {
+            "avg_f1": 0.9422,
+            "avg_roc_auc": 0.9693
+        },
+        "RandomForest": {
+            "avg_f1": 0.9473,
+            "avg_roc_auc": 0.9799
+        },
+        "KNN": {
+            "avg_f1": 0.9549,
+            "avg_roc_auc": 0.9768
+        },
+        "NaiveBayes": {
+            "avg_f1": 0.3883,
+            "avg_roc_auc": 0.8356
+        },
+        "GradientBoosting": {
+            "avg_f1": 0.9468,
+            "avg_roc_auc": 0.9764
+        },
+        "XGBoost": {
+            "avg_f1": 0.9566,
+            "avg_roc_auc": 0.9869
+        },
+        "LightGBM": {
+            "avg_f1": 0.9566,
+            "avg_roc_auc": 0.9924
+        },
+        "MLP": {
+            "avg_f1": 0.8841,
+            "avg_roc_auc": 0.9797
+        }
+    },
+    "generated_on": "2026-01-17T22:39:05.329512"
+}

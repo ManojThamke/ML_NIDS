@@ -1,46 +1,60 @@
 # detection-engine/realtime_v2/model_loader_v2.py
+# ==================================================
+# Phase-2 Dynamic Model Loader (Metadata Driven)
+# ==================================================
 
 import os
+import json
 import joblib
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODELS_DIR = os.path.join(
-    BASE_DIR, "..", "..", "models", "realtime"
-)
+MODELS_BASE_DIR = os.path.join(BASE_DIR, "..", "..", "models", "phase2_offline_v2")
+METADATA_FILE = os.path.join(MODELS_BASE_DIR, "model_metadata.json")
+SCALER_FILE = "scaler_v2.pkl"
 
-MODEL_FILES = {
-    "LogisticRegression": "LogisticRegression_realtime.pkl",
-    "NaiveBayes": "NaiveBayes_realtime.pkl",
-    "SupportVectorMachine": "SupportVectorMachine_realtime.pkl",
-    "KNN": "KNN_realtime.pkl",
-    "DecisionTree": "DecisionTree_realtime.pkl",
-    "RandomForest": "RandomForest_realtime.pkl",
-    "GradientBoosting": "GradientBoosting_realtime.pkl",
-    "MultiLayerPerceptron": "MultiLayerPerceptron_realtime.pkl",
-}
 
-def load_realtime_models():
-    models = {}
+def load_model_and_scaler():
+    print("📦 Loading model using evaluation metadata...")
 
-    print("📦 Loading realtime models (V2)...")
+    # ---------------- LOAD METADATA ----------------
+    if not os.path.exists(METADATA_FILE):
+        raise FileNotFoundError(f"❌ Metadata file missing: {METADATA_FILE}")
 
-    for name, filename in MODEL_FILES.items():
-        path = os.path.join(MODELS_DIR, filename)
+    with open(METADATA_FILE, "r") as f:
+        metadata = json.load(f)
 
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"❌ Model not found: {path}")
+    model_file = metadata["selected_model"]
 
-        model = joblib.load(path)
+    model_path = os.path.join(MODELS_BASE_DIR, model_file)
+    scaler_path = os.path.join(MODELS_BASE_DIR, SCALER_FILE)
 
-        # Safety check for thresholding
-        if not hasattr(model, "predict_proba"):
-            raise AttributeError(
-                f"❌ {name} does not support predict_proba()"
-            )
+    # ---------------- SAFETY CHECKS ----------------
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"❌ Model not found: {model_path}")
 
-        models[name] = model
-        print(f"✅ Loaded: {name}")
+    if not os.path.exists(scaler_path):
+        raise FileNotFoundError(f"❌ Scaler not found: {scaler_path}")
 
-    print("🎉 All realtime models loaded successfully")
-    return models
+    # ---------------- LOAD ----------------
+    model = joblib.load(model_path)
+    scaler = joblib.load(scaler_path)
+
+    # ---------------- VALIDATION ----------------
+    if not hasattr(model, "predict") or not hasattr(model, "predict_proba"):
+        raise AttributeError("❌ Loaded model missing required methods")
+
+    print("✅ Model & scaler loaded successfully")
+    print(f"🏆 Selected Model: {model_file}")
+    print(f"📊 Selection Basis: {metadata['selection_criteria']}")
+    print(f"📈 Avg F1: {metadata['metrics']['avg_f1']}")
+    print(f"📈 Avg ROC–AUC: {metadata['metrics']['avg_roc_auc']}")
+
+    return model, scaler
+
+
+# ---------------- SELF TEST ----------------
+if __name__ == "__main__":
+    print("🧪 Running metadata-driven model loader test...")
+    model, scaler = load_model_and_scaler()
+    print("🎯 Model loader test PASSED")
