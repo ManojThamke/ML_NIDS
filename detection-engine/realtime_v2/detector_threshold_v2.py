@@ -1,13 +1,7 @@
-"""
-Day 5 – Part 2 (FINAL – UPDATED)
-Global threshold + multi-threshold voting logic (V2)
-
-✔ Supports single threshold (deployment)
-✔ Supports multiple thresholds (analysis)
-✔ Global threshold for all models
-✔ Voting-based decision
-✔ CLI-friendly
-"""
+# detection-engine/realtime_v2/detector_threshold_v2.py
+# =====================================================
+# Global Threshold + Multi-Threshold Voting Engine (V2)
+# =====================================================
 
 def apply_threshold_and_vote(
     per_model_probs: dict,
@@ -19,35 +13,40 @@ def apply_threshold_and_vote(
     Apply global threshold(s) to all models and perform voting.
 
     Parameters:
-    - per_model_probs : {model_name: probability}
-    - threshold       : single global threshold (float)
-    - thresholds      : list of global thresholds [0.4, 0.5, 0.6]
-    - vote_k          : minimum models required to vote ATTACK
+    - per_model_probs : dict
+        {model_name: probability}
+    - threshold : float | None
+        Single global threshold (DEPLOYMENT MODE)
+    - thresholds : list[float] | None
+        Multiple thresholds (ANALYSIS MODE)
+    - vote_k : int
+        Minimum number of models required to classify ATTACK
 
     Returns:
-    - If single threshold:
-        {
-            "final_label": "ATTACK"/"BENIGN",
-            "per_model_decision": {model: 0/1},
-            "triggered_models": [...],
-            "attack_votes": int,
-            "threshold": float,
-            "vote_k": int
-        }
+    --------
+    DEPLOYMENT MODE (single threshold):
+    {
+        "final_label": "ATTACK" | "BENIGN",
+        "per_model_decision": {model: 0/1},
+        "triggered_models": [...],
+        "attack_votes": int,
+        "threshold": float,
+        "vote_k": int
+    }
 
-    - If multiple thresholds:
-        {
-            threshold_value: {
-                "final_label": ...,
-                "attack_votes": ...,
-                "triggered_models": [...]
-            }
+    ANALYSIS MODE (multi-threshold):
+    {
+        threshold_value: {
+            "final_label": "ATTACK" | "BENIGN",
+            "attack_votes": int,
+            "triggered_models": [...]
         }
+    }
     """
 
-    # ===============================
-    # MULTI-THRESHOLD MODE (ANALYSIS)
-    # ===============================
+    # ==================================================
+    # MULTI-THRESHOLD MODE (OFFLINE / ANALYSIS)
+    # ==================================================
     if thresholds is not None:
         results = {}
 
@@ -58,7 +57,9 @@ def apply_threshold_and_vote(
             ]
 
             attack_votes = len(triggered_models)
-            final_label = "ATTACK" if attack_votes >= vote_k else "BENIGN"
+            final_label = (
+                "ATTACK" if attack_votes >= vote_k else "BENIGN"
+            )
 
             results[th] = {
                 "final_label": final_label,
@@ -68,9 +69,9 @@ def apply_threshold_and_vote(
 
         return results
 
-    # ===============================
-    # SINGLE THRESHOLD MODE (DEPLOY)
-    # ===============================
+    # ==================================================
+    # SINGLE THRESHOLD MODE (REALTIME / DEPLOYMENT)
+    # ==================================================
     if threshold is None:
         threshold = 0.5  # safe default
 
@@ -85,7 +86,9 @@ def apply_threshold_and_vote(
             triggered_models.append(model)
 
     attack_votes = len(triggered_models)
-    final_label = "ATTACK" if attack_votes >= vote_k else "BENIGN"
+    final_label = (
+        "ATTACK" if attack_votes >= vote_k else "BENIGN"
+    )
 
     return {
         "final_label": final_label,

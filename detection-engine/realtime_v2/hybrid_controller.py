@@ -1,13 +1,13 @@
 def apply_hybrid_logic(payload: dict):
     """
-    Hybrid Decision Engine (V2)
+    Hybrid Decision Engine (V2 – CICIDS2018 Aligned)
 
     Combines:
-    - ML ensemble output
+    - Multi-model ML decision
     - Voting strength
     - Confidence score
-    - Protocol / port awareness
-    - Network context
+    - Protocol & port awareness
+    - Flow context
 
     Final labels:
     - BENIGN
@@ -15,109 +15,100 @@ def apply_hybrid_logic(payload: dict):
     - ATTACK
     """
 
-    # -------------------------------
-    # Extract required fields
-    # -------------------------------
-    final_label = payload.get("finalLabel")
+    # --------------------------------------------------
+    # Extract required fields (SAFE)
+    # --------------------------------------------------
+    final_label = payload.get("finalLabel", "BENIGN")
     confidence = payload.get("confidence", 0.0)
     attack_votes = payload.get("attackVotes", 0)
     vote_k = payload.get("voteK", 1)
 
     dst_port = payload.get("dstPort")
     dst_ip = payload.get("destinationIP")
+    protocol = payload.get("protocol")
 
-    # Optional (future-safe)
     flow_duration = payload.get("flowDuration", None)
 
-    # -------------------------------
-    # Default decision
-    # -------------------------------
+    # --------------------------------------------------
+    # DEFAULT OUTPUT
+    # --------------------------------------------------
     hybrid_label = "BENIGN"
     severity = "BENIGN"
     reason = "Low risk traffic"
 
-    # ==========================================================
-    # APPLY HYBRID LOGIC ONLY IF ML SAYS ATTACK
-    # ==========================================================
+    # ==================================================
+    # HARD SAFETY RULES (APPLY FIRST)
+    # ==================================================
+
+    # 1️⃣ Non TCP/UDP traffic (not part of CICIDS)
+    if protocol not in ["TCP", "UDP"]:
+        payload["hybridLabel"] = "BENIGN"
+        payload["severity"] = "LOW"
+        payload["hybridReason"] = "Non TCP/UDP traffic (out of CICIDS scope)"
+        return payload
+
+    # 2️⃣ Multicast traffic
+    if dst_ip and dst_ip.startswith(("224.", "239.")):
+        payload["hybridLabel"] = "BENIGN"
+        payload["severity"] = "LOW"
+        payload["hybridReason"] = "Multicast discovery/control traffic"
+        return payload
+
+    # 3️⃣ Service discovery protocols
+    if dst_port in [1900, 5353, 137, 138]:
+        payload["hybridLabel"] = "BENIGN"
+        payload["severity"] = "LOW"
+        payload["hybridReason"] = "Local service discovery traffic"
+        return payload
+
+    # ==================================================
+    # APPLY HYBRID LOGIC ONLY IF ML FLAGS ATTACK
+    # ==================================================
     if final_label == "ATTACK":
 
-        # ------------------------------------------------------
-        # RULE 1: Very low confidence → downgrade
-        # ------------------------------------------------------
-        if confidence < 0.55:
+        # --------------------------------------------------
+        # Very low confidence → downgrade
+        # --------------------------------------------------
+        if confidence < 0.60:
             hybrid_label = "SUSPICIOUS"
             severity = "LOW"
             reason = "Very low ensemble confidence"
 
-        # ------------------------------------------------------
-        # RULE 2: Weak model agreement
-        # (Barely crossing vote threshold)
-        # ------------------------------------------------------
+        # --------------------------------------------------
+        # Weak ensemble agreement
+        # --------------------------------------------------
         elif attack_votes < (vote_k + 1):
             hybrid_label = "SUSPICIOUS"
             severity = "MEDIUM"
-            reason = "Partial model agreement"
+            reason = "Weak multi-model agreement"
 
-        # ------------------------------------------------------
-        # RULE 3: Multicast traffic safeguard
-        # (SSDP, routing, discovery)
-        # ------------------------------------------------------
-        elif dst_ip and dst_ip.startswith(("224.", "239.")):
-            hybrid_label = "BENIGN"
-            severity = "LOW"
-            reason = "Multicast control / discovery traffic"
-
-        # ------------------------------------------------------
-        # RULE 4: SSDP (UPnP discovery)
-        # ------------------------------------------------------
-        elif dst_port == 1900:
-            hybrid_label = "BENIGN"
-            severity = "LOW"
-            reason = "SSDP multicast discovery traffic"
-
-        # ------------------------------------------------------
-        # RULE 5: mDNS (Apple / Linux service discovery)
-        # ------------------------------------------------------
-        elif dst_port == 5353:
-            hybrid_label = "BENIGN"
-            severity = "LOW"
-            reason = "mDNS local service discovery"
-
-        # ------------------------------------------------------
-        # RULE 6: Windows NetBIOS discovery
-        # ------------------------------------------------------
-        elif dst_port in [137, 138]:
-            hybrid_label = "BENIGN"
-            severity = "LOW"
-            reason = "Windows network discovery traffic"
-
-        # ------------------------------------------------------
-        # RULE 7: Browser / DNS / HTTPS safeguard
-        # ------------------------------------------------------
-        elif dst_port in [53, 443] and confidence < 0.7:
+        # --------------------------------------------------
+        # DNS / HTTPS false-positive protection
+        # --------------------------------------------------
+        elif dst_port in [53, 443] and confidence < 0.75:
             hybrid_label = "SUSPICIOUS"
             severity = "LOW"
-            reason = "Likely browser or DNS-related traffic"
+            reason = "Likely benign DNS/HTTPS traffic"
 
-        # ------------------------------------------------------
-        # RULE 8: Short-lived flows (anti false-positive)
-        # ------------------------------------------------------
-        elif flow_duration is not None and flow_duration < 2 and confidence < 0.7:
+        # --------------------------------------------------
+        # Short-lived flows
+        # --------------------------------------------------
+        elif flow_duration is not None and flow_duration < 2 and confidence < 0.75:
             hybrid_label = "BENIGN"
             severity = "LOW"
             reason = "Short-lived low-volume flow"
 
-        # ------------------------------------------------------
-        # RULE 9: TRUE HIGH-CONFIDENCE ATTACK
-        # ------------------------------------------------------
+        # --------------------------------------------------
+        # TRUE HIGH CONFIDENCE ATTACK
+        # --------------------------------------------------
         else:
             hybrid_label = "ATTACK"
             severity = "HIGH"
             reason = "High confidence multi-model attack"
 
-    # -------------------------------
+    # --------------------------------------------------
     # Update payload
-    # -------------------------------
+    # --------------------------------------------------
     payload["hybridLabel"] = hybrid_label
     payload["severity"] = severity
     payload["hybridReason"] = reason

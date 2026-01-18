@@ -1,6 +1,6 @@
 # detection-engine/realtime_v2/model_loader_v2.py
 # ==================================================
-# Phase-2 Dynamic Model Loader (Metadata Driven)
+# Phase-2 Dynamic Model Loader (Metadata + Multi-Model)
 # ==================================================
 
 import os
@@ -9,17 +9,22 @@ import joblib
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODELS_BASE_DIR = os.path.join(BASE_DIR, "..", "..", "models", "phase2_offline_v2")
+MODELS_BASE_DIR = os.path.join(
+    BASE_DIR, "..", "..", "models", "phase2_offline_v2"
+)
+
 METADATA_FILE = os.path.join(MODELS_BASE_DIR, "model_metadata.json")
-SCALER_FILE = "scaler_v2.pkl"
+SCALER_FILE = os.path.join(MODELS_BASE_DIR, "scaler_v2.pkl")
 
 
+# ==================================================
+# MODE 1: Load BEST model (metadata driven)
+# ==================================================
 def load_model_and_scaler():
-    print("📦 Loading model using evaluation metadata...")
+    print("📦 Loading BEST model using evaluation metadata...")
 
-    # ---------------- LOAD METADATA ----------------
     if not os.path.exists(METADATA_FILE):
-        raise FileNotFoundError(f"❌ Metadata file missing: {METADATA_FILE}")
+        raise FileNotFoundError("❌ model_metadata.json not found")
 
     with open(METADATA_FILE, "r") as f:
         metadata = json.load(f)
@@ -27,34 +32,69 @@ def load_model_and_scaler():
     model_file = metadata["selected_model"]
 
     model_path = os.path.join(MODELS_BASE_DIR, model_file)
-    scaler_path = os.path.join(MODELS_BASE_DIR, SCALER_FILE)
 
-    # ---------------- SAFETY CHECKS ----------------
     if not os.path.exists(model_path):
-        raise FileNotFoundError(f"❌ Model not found: {model_path}")
+        raise FileNotFoundError(f"❌ Model not found: {model_file}")
 
-    if not os.path.exists(scaler_path):
-        raise FileNotFoundError(f"❌ Scaler not found: {scaler_path}")
-
-    # ---------------- LOAD ----------------
     model = joblib.load(model_path)
-    scaler = joblib.load(scaler_path)
+    scaler = joblib.load(SCALER_FILE)
 
-    # ---------------- VALIDATION ----------------
-    if not hasattr(model, "predict") or not hasattr(model, "predict_proba"):
-        raise AttributeError("❌ Loaded model missing required methods")
-
-    print("✅ Model & scaler loaded successfully")
+    print("✅ Model & scaler loaded")
     print(f"🏆 Selected Model: {model_file}")
-    print(f"📊 Selection Basis: {metadata['selection_criteria']}")
+    print(f"📊 Criteria: {metadata['selection_criteria']}")
     print(f"📈 Avg F1: {metadata['metrics']['avg_f1']}")
     print(f"📈 Avg ROC–AUC: {metadata['metrics']['avg_roc_auc']}")
 
     return model, scaler
 
 
-# ---------------- SELF TEST ----------------
+# ==================================================
+# MODE 2: Load ALL models (for ensemble / voting)
+# ==================================================
+def load_all_models_and_scaler():
+    print("📦 Loading ALL trained models for ensemble...")
+
+    if not os.path.exists(METADATA_FILE):
+        raise FileNotFoundError("❌ model_metadata.json not found")
+
+    with open(METADATA_FILE, "r") as f:
+        metadata = json.load(f)
+
+    evaluated_models = metadata["evaluated_models"]
+
+    models = {}
+
+    for model_name in evaluated_models.keys():
+        model_file = f"{model_name}_v2.pkl"
+        model_path = os.path.join(MODELS_BASE_DIR, model_file)
+
+        if not os.path.exists(model_path):
+            print(f"⚠️ Skipping missing model: {model_file}")
+            continue
+
+        model = joblib.load(model_path)
+
+        if not hasattr(model, "predict_proba"):
+            print(f"⚠️ Skipping non-probabilistic model: {model_name}")
+            continue
+
+        models[model_name] = model
+        print(f"✅ Loaded: {model_name}")
+
+    scaler = joblib.load(SCALER_FILE)
+
+    print(f"🎯 Total models loaded: {len(models)}")
+    return models, scaler
+
+
+# ==================================================
+# SELF TEST
+# ==================================================
 if __name__ == "__main__":
-    print("🧪 Running metadata-driven model loader test...")
-    model, scaler = load_model_and_scaler()
-    print("🎯 Model loader test PASSED")
+    print("\n🧪 Testing BEST model loader")
+    load_model_and_scaler()
+
+    print("\n🧪 Testing MULTI-model loader")
+    load_all_models_and_scaler()
+
+    print("\n🎉 Model loader tests PASSED")
