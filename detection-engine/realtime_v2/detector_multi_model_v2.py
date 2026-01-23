@@ -3,6 +3,7 @@
 # STEP-3: ML ONLY (No voting, no hybrid, no logging)
 # =====================================================
 
+import pandas as pd
 from model_loader_v2 import load_all_models_and_scaler
 
 # -----------------------------------------------------
@@ -65,12 +66,18 @@ def detect_with_all_models(features_df, selected_models=None):
             else:
                 print(f"[WARN] Model not available: {m}")
     else:
-        models_to_use = MODELS.keys()
+        models_to_use = list(MODELS.keys())
 
     # -------------------------------------------------
     # Scale features ONCE
     # -------------------------------------------------
     X_scaled = SCALER.transform(features_df)
+
+    # ✅ RESTORE FEATURE NAMES (CRITICAL FIX)
+    X_scaled_df = pd.DataFrame(
+        X_scaled,
+        columns=SCALER.feature_names_in_
+    )
 
     # -------------------------------------------------
     # Run inference
@@ -80,7 +87,13 @@ def detect_with_all_models(features_df, selected_models=None):
         if model is None:
             continue
 
-        prob_attack = model.predict_proba(X_scaled)[0][1]
+        # ✅ Decide input type per model
+        if hasattr(model, "feature_names_in_"):
+            X_input = X_scaled_df      # Tree / LGB / RF / GB
+        else:
+            X_input = X_scaled         # MLP / sklearn NN
+
+        prob_attack = model.predict_proba(X_input)[0][1]
         prob_attack = round(float(prob_attack), 6)
 
         label = "ATTACK" if prob_attack >= 0.5 else "BENIGN"
@@ -89,5 +102,6 @@ def detect_with_all_models(features_df, selected_models=None):
             "probability": prob_attack,
             "label": label
         }
+
 
     return results

@@ -22,7 +22,7 @@ function Topbar({ monitoring }) {
   };
 
   return (
-    <div className="flex justify-between items-center px-6 py-4 border-b bg-white">
+    <div className="flex justify-between items-center px-6 py-4 border-b bg-white shadow-sm">
       
       {/* 🔹 Dynamic Page Title */}
       <h1 className="text-xl font-semibold text-gray-800">

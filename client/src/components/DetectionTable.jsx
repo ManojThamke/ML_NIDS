@@ -1,6 +1,30 @@
 import { useEffect, useState } from "react";
 import { getRecentDetections } from "../api";
 
+/* ================= COLOR HELPERS ================= */
+
+const labelStyle = (label) => {
+  switch (label) {
+    case "ATTACK":
+      return "bg-red-100 text-red-700";
+    case "SUSPICIOUS":
+      return "bg-yellow-100 text-yellow-800";
+    default:
+      return "bg-green-100 text-green-700";
+  }
+};
+
+const severityStyle = (severity) => {
+  switch (severity) {
+    case "HIGH":
+      return "bg-red-600 text-white";
+    case "MEDIUM":
+      return "bg-yellow-400 text-black";
+    default:
+      return "bg-green-200 text-green-800";
+  }
+};
+
 function DetectionTable() {
   const [detections, setDetections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,16 +64,16 @@ function DetectionTable() {
         <p className="text-gray-500 text-sm">Loading traffic...</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm text-left">
+          <table className="min-w-full text-sm text-center">
             <thead className="bg-gray-100 text-gray-700 text-xs uppercase">
               <tr>
-                <th className="px-3 py-2">Time</th>
-                <th className="px-3 py-2">Source IP</th>
-                <th className="px-3 py-2">Destination IP</th>
-                <th className="px-3 py-2">Confidence</th>
-                <th className="px-3 py-2">ML Label</th>
-                <th className="px-3 py-2">Hybrid</th>
-                <th className="px-3 py-2">Severity</th>
+                <th className="px-3 py-2 text-center">Time</th>
+                <th className="px-3 py-2 text-center">Source IP</th>
+                <th className="px-3 py-2 text-center">Destination IP</th>
+                <th className="px-3 py-2 text-center">Confidence</th>
+                <th className="px-3 py-2 text-center">ML Label</th>
+                <th className="px-3 py-2 text-center">Hybrid</th>
+                <th className="px-3 py-2 text-center">Severity</th>
               </tr>
             </thead>
 
@@ -60,56 +84,57 @@ function DetectionTable() {
                     key={d._id}
                     className="border-b hover:bg-gray-50"
                   >
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-center">
                       {new Date(d.timestamp).toLocaleTimeString()}
                     </td>
 
-                    <td className="px-3 py-2">{d.sourceIP}</td>
-                    <td className="px-3 py-2">{d.destinationIP}</td>
+                    <td className="px-3 py-2 text-center font-mono">
+                      {d.sourceIP}
+                    </td>
 
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-center font-mono">
+                      {d.destinationIP}
+                    </td>
+
+                    <td className="px-3 py-2 text-center font-semibold">
                       {(d.confidence * 100).toFixed(2)}%
                     </td>
 
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-center">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          d.finalLabel === "ATTACK"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${labelStyle(
+                          d.finalLabel
+                        )}`}
                       >
                         {d.finalLabel}
                       </span>
                     </td>
 
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-700">
+                    <td className="px-3 py-2 text-center">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${labelStyle(
+                          d.hybridLabel
+                        )}`}
+                      >
                         {d.hybridLabel}
                       </span>
                     </td>
 
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-center">
                       <span
-                        className={`px-2 py-1 rounded text-xs font-semibold ${
-                          d.severity === "HIGH"
-                            ? "bg-red-600 text-white"
-                            : d.severity === "MEDIUM"
-                            ? "bg-orange-500 text-white"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${severityStyle(
+                          d.severity
+                        )}`}
                       >
                         {d.severity}
                       </span>
                     </td>
+
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan="7"
-                    className="text-center py-4 text-gray-500"
-                  >
+                  <td colSpan="7" className="py-4 text-gray-500 text-center">
                     No detections yet
                   </td>
                 </tr>
