@@ -25,7 +25,11 @@ export const getModelAgreementMatrix = () => API.get("/stats/model-agreement");
 export const getEnsembleVsBestModel = () => API.get("/stats/ensemble-vs-best");
 export const getAttackTimeline = (range = "1h") => API.get(`/stats/attack-timeline?range=${range}`);
 export const getTopAttackedDestinations = (limit = 5) => API.get(`/stats/top-attacked-destinations?limit=${limit}`);
-
+export const getRecentDetections = (limit = 10) => API.get(`/detections/recent?limit=${limit}`);
+export const getDetectionStats = () => API.get("/detections/stats");
+export const getDetectionLogs = (params) => API.get("/detections/logs", { params });
+export const exportDetectionLogs = (params) => API.get("/detections/export", { params, responseType: 'blob' });
+export const getDetectionTimeline = (range = "24h") => API.get(`/detections/timeline?range=${range}`);
 // ================= SETTINGS (PHASE-1) =================
 
 // Get latest detection settings

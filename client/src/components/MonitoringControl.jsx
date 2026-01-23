@@ -1,31 +1,58 @@
-import { startMonitoring, stopMonitoring } from "../api";
+import { startMonitoring, stopMonitoring, getMonitoringStatus } from "../api";
+import { useState } from "react";
 
 function MonitoringControl({ monitoring, setMonitoring }) {
+  const [loading, setLoading] = useState(false);
+
+  const syncStatus = async () => {
+    const res = await getMonitoringStatus();
+    setMonitoring(res.data.running);
+  };
+
   const handleClick = async () => {
+    if (loading) return;
+
     try {
+      setLoading(true);
+
       if (monitoring) {
         await stopMonitoring();
-        setMonitoring(false);
       } else {
         await startMonitoring();
-        setMonitoring(true);
       }
+
+      // 🔑 ALWAYS trust backend status
+      await syncStatus();
+
     } catch (err) {
-      console.error("Monitoring toggle failed", err);
+      console.error("❌ Monitoring toggle failed", err);
+      alert("Failed to change monitoring state. Check backend logs.");
+      await syncStatus();
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="bg-white p-4 rounded-xl shadow border flex justify-between items-center">
-      <h2 className="font-semibold">Monitoring Control</h2>
+      <h2 className="font-semibold text-gray-800">
+        Monitoring Control
+      </h2>
 
       <button
         onClick={handleClick}
-        className={`px-5 py-2 rounded text-white font-medium ${
-          monitoring ? "bg-red-600" : "bg-green-600"
-        }`}
+        disabled={loading}
+        className={`px-5 py-2 rounded text-white font-medium transition ${
+          monitoring
+            ? "bg-red-600 hover:bg-red-700"
+            : "bg-green-600 hover:bg-green-700"
+        } ${loading ? "opacity-60 cursor-not-allowed" : ""}`}
       >
-        {monitoring ? "Stop Monitoring" : "Start Monitoring"}
+        {loading
+          ? "Processing..."
+          : monitoring
+          ? "Stop Monitoring"
+          : "Start Monitoring"}
       </button>
     </div>
   );

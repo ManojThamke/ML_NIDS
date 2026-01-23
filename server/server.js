@@ -9,6 +9,7 @@ const modelRoutes = require("./routes/modelRoutes")
 const statsRoutes = require("./routes/statsRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const systemRoutes = require("./routes/systemRoutes");
+const detectionRoutes = require("./routes/detectionroutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -33,6 +34,7 @@ app.use("/api/models", require("./routes/modelRoutes"));  //models comparison
 app.use("/api/stats", require("./routes/statsRoutes")); // Stats API
 app.use("/api/settings", settingsRoutes);
 app.use("/api/system", systemRoutes);
+app.use("/api/detections", detectionRoutes); // Detection Logs
 
 /* =======================
    Health Check

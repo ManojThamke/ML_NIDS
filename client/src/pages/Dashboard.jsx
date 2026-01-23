@@ -2,10 +2,10 @@ import MonitoringControl from "../components/MonitoringControl";
 import ControlStats from "../components/ControlStats";
 import AttackBenignDonut from "../components/charts/AttackBenignDonut";
 import AttackProbabilityArea from "../components/charts/AttackProbabilityArea";
-import AlertsTable from "../components/AlertsTable";
 // import ModelComparisonChart from "../components/charts/ModelComparisonChart";
 import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
 import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
+import DetectionTable from "../components/DetectionTable";
 function Dashboard({ alerts, stats, monitoring, setMonitoring }) {
   return (
     <div className="p-8 space-y-6">
@@ -48,7 +48,7 @@ function Dashboard({ alerts, stats, monitoring, setMonitoring }) {
       </div>
 
       {/* Live Traffic Table */}
-      <AlertsTable />
+      <DetectionTable />
 
     </div>
   );

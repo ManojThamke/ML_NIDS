@@ -1,19 +1,56 @@
 const Settings = require("../models/Settings");
 
-/* ================= GET SETTINGS ================= */
+/* ======================================================
+   GET LATEST SETTINGS
+====================================================== */
 exports.getSettings = async (req, res) => {
   try {
-    const settings = await Settings.findOne().sort({ createdAt: -1 });
+    const settings = await Settings.findOne().sort({ updatedAt: -1 });
+
+    if (!settings) {
+      return res.json(null);
+    }
+
     res.json(settings);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-/* ================= SAVE / UPDATE SETTINGS ================= */
+/* ======================================================
+   SAVE / UPDATE SETTINGS
+====================================================== */
 exports.saveSettings = async (req, res) => {
   try {
-    const settings = new Settings(req.body);
+    const {
+      models,
+      threshold,
+      voteK,
+      flowTimeout,
+      interface: iface,
+    } = req.body;
+
+    // 🔒 Basic validation
+    if (!iface || iface.trim() === "") {
+      return res.status(400).json({
+        error: "Network interface is required",
+      });
+    }
+
+    if (!models || models.length === 0) {
+      return res.status(400).json({
+        error: "At least one model must be selected",
+      });
+    }
+
+    const settings = new Settings({
+      models,
+      threshold,
+      voteK,
+      flowTimeout,
+      interface: iface,
+    });
+
     await settings.save();
 
     res.json({

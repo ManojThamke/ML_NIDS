@@ -33,7 +33,7 @@ def apply_hybrid_logic(payload: dict):
     # DEFAULT OUTPUT
     # --------------------------------------------------
     hybrid_label = "BENIGN"
-    severity = "BENIGN"
+    severity = "LOW"
     reason = "Low risk traffic"
 
     # ==================================================
