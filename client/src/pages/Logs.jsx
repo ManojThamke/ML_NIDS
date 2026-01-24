@@ -5,19 +5,34 @@ import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
 import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
 import ExportLogsModal from "../components/ExportLogsModal";
 import LogsInsights from "../components/LogsInsights";
-import LogDetailsModal from "../components/LogDetailsModal"; // ✅ ADD
+import LogDetailsModal from "../components/LogDetailsModal";
+
+/* ================= COLOR HELPERS ================= */
+
+const labelClass = (label) => {
+  if (label === "ATTACK") return "bg-red-100 text-red-700";
+  if (label === "SUSPICIOUS") return "bg-yellow-100 text-yellow-800";
+  return "bg-green-100 text-green-700"; // BENIGN
+};
+
+const severityClass = (severity) => {
+  if (severity === "HIGH") return "bg-red-600 text-white";
+  if (severity === "MEDIUM") return "bg-yellow-400 text-black";
+  return "bg-green-200 text-green-800"; // LOW
+};
 
 function Logs() {
   const [logs, setLogs] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedLog, setSelectedLog] = useState(null); // ✅ used now
+  const [selectedLog, setSelectedLog] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   const [showExportModal, setShowExportModal] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [label, setLabel] = useState("");
   const [search, setSearch] = useState("");
@@ -31,6 +46,7 @@ function Logs() {
 
       const res = await getLogs({
         page,
+        limit: 50,
         label,
         search,
         minProb,
@@ -60,42 +76,35 @@ function Logs() {
 
   /* ================= EXPORT ================= */
   const handleExport = async (format, options) => {
-    try {
-      const res = await exportLogs({
-        format,
-        range: options.range,
-        onlyAttack: options.onlyAttack,
-      });
+    const res = await exportLogs({
+      format,
+      range: options.range,
+      onlyAttack: options.onlyAttack,
+    });
 
-      const blob = new Blob([res.data], {
-        type:
-          format === "csv"
-            ? "text/csv;charset=utf-8;"
-            : "application/json;charset=utf-8;",
-      });
+    const blob = new Blob([res.data], {
+      type:
+        format === "csv"
+          ? "text/csv;charset=utf-8;"
+          : "application/json;charset=utf-8;",
+    });
 
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `traffic_logs_${Date.now()}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Export failed:", err);
-    }
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `traffic_logs_${Date.now()}.${format}`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Traffic Logs</h1>
 
-      {/* 📊 Global Insights */}
       <LogsInsights />
 
-      {/* 🔍 Filters */}
-      <div className="bg-white rounded-xl p-4 shadow border grid grid-cols-5 gap-4">
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 shadow border grid grid-cols-6 gap-4">
         <select
           value={label}
           onChange={(e) => {
@@ -107,6 +116,7 @@ function Logs() {
           <option value="">All</option>
           <option value="ATTACK">Attack</option>
           <option value="BENIGN">Benign</option>
+          <option value="SUSPICIOUS">Suspicious</option>
         </select>
 
         <input
@@ -122,7 +132,7 @@ function Logs() {
         <input
           type="number"
           step="0.01"
-          placeholder="Min Prob"
+          placeholder="Min Confidence"
           value={minProb}
           onChange={(e) => {
             setPage(1);
@@ -134,7 +144,7 @@ function Logs() {
         <input
           type="number"
           step="0.01"
-          placeholder="Max Prob"
+          placeholder="Max Confidence"
           value={maxProb}
           onChange={(e) => {
             setPage(1);
@@ -155,11 +165,20 @@ function Logs() {
         >
           Reset
         </button>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showAdvanced}
+            onChange={() => setShowAdvanced(!showAdvanced)}
+          />
+          Advanced
+        </label>
       </div>
 
-      {/* 🔄 Controls */}
+      {/* Controls */}
       <div className="flex items-center gap-4 text-sm">
-        <label className="flex items-center gap-2 font-medium">
+        <label className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={autoRefresh}
@@ -168,8 +187,6 @@ function Logs() {
           />
           Auto Refresh (5s)
         </label>
-
-        {autoRefresh && <span className="text-green-600">Live updating enabled</span>}
 
         {refreshing && (
           <span className="text-xs text-gray-500 animate-pulse">
@@ -187,7 +204,7 @@ function Logs() {
         </div>
       </div>
 
-      {/* 📈 Charts */}
+      {/* Charts */}
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-8">
           <TrafficTimelineChart />
@@ -197,66 +214,72 @@ function Logs() {
         </div>
       </div>
 
-      {/* 📊 Logs Table */}
-      <div className="overflow-x-auto bg-white rounded-xl shadow border min-h-[420px]">
-        <table className="min-w-full table-fixed text-sm">
-          <thead className="bg-gray-100 text-gray-600 uppercase sticky top-0 z-10">
+      {/* Logs Table */}
+      <div className="overflow-x-auto bg-white rounded-xl shadow border">
+        <table className="min-w-full text-sm text-center">
+          <thead className="bg-gray-100 uppercase text-xs">
             <tr>
-              <th className="w-[22%] px-4 py-3 text-left">Time</th>
-              <th className="w-[20%] px-4 py-3 text-left">Source IP</th>
-              <th className="w-[20%] px-4 py-3 text-left">Destination IP</th>
-              <th className="w-[18%] px-4 py-3 text-center">Probability</th>
-              <th className="w-[20%] px-4 py-3 text-center">Label</th>
+              <th className="px-3 py-2">Time</th>
+              <th className="px-3 py-2">Source IP</th>
+              <th className="px-3 py-2">Destination IP</th>
+              <th className="px-3 py-2">Confidence</th>
+              <th className="px-3 py-2">ML</th>
+              <th className="px-3 py-2">Hybrid</th>
+              <th className="px-3 py-2">Severity</th>
+              {showAdvanced && (
+                <>
+                  <th className="px-3 py-2">Protocol</th>
+                  <th className="px-3 py-2">Port</th>
+                  <th className="px-3 py-2">Reason</th>
+                </>
+              )}
             </tr>
           </thead>
 
           <tbody>
-            {loading && (
-              <tr>
-                <td colSpan="5" className="text-center py-8 text-gray-500">
-                  Loading logs…
-                </td>
-              </tr>
-            )}
-
-            {!loading && logs.length === 0 && (
-              <tr>
-                <td colSpan="5" className="text-center py-8 text-gray-500">
-                  No logs found
-                </td>
-              </tr>
-            )}
-
             {!loading &&
               logs.map((log) => (
                 <tr
                   key={log._id}
-                  onClick={() => setSelectedLog(log)} // ✅ CLICK
-                  className={`border-b cursor-pointer transition ${
-                    log.finalLabel === "ATTACK"
-                      ? "bg-red-50 hover:bg-red-100"
-                      : "hover:bg-gray-50"
-                  }`}
+                  onClick={() => setSelectedLog(log)}
+                  className="border-b hover:bg-gray-50 cursor-pointer"
                 >
-                  <td className="px-4 py-3 font-mono">
+                  <td className="px-3 py-2 font-mono">
                     {new Date(log.timestamp).toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 font-mono">{log.sourceIP}</td>
-                  <td className="px-4 py-3 font-mono">{log.destinationIP}</td>
-                  <td className="px-4 py-3 text-center font-semibold">
-                    {(log.probability * 100).toFixed(2)}%
+                  <td className="px-3 py-2 font-mono">{log.sourceIP}</td>
+                  <td className="px-3 py-2 font-mono">{log.destinationIP}</td>
+                  <td className="px-3 py-2 font-semibold">
+                    {(log.confidence * 100).toFixed(2)}%
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        log.finalLabel === "ATTACK"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-green-100 text-green-700"
-                      }`}
-                    >
+
+                  <td>
+                    <span className={`px-3 py-1 rounded-full text-xs ${labelClass(log.finalLabel)}`}>
                       {log.finalLabel}
                     </span>
                   </td>
+
+                  <td>
+                    <span className={`px-3 py-1 rounded-full text-xs ${labelClass(log.hybridLabel)}`}>
+                      {log.hybridLabel}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span className={`px-3 py-1 rounded-full text-xs ${severityClass(log.severity)}`}>
+                      {log.severity}
+                    </span>
+                  </td>
+
+                  {showAdvanced && (
+                    <>
+                      <td className="text-xs">{log.protocol || "-"}</td>
+                      <td className="text-xs">{log.dstPort || "-"}</td>
+                      <td className="text-xs truncate max-w-[180px]">
+                        {log.hybridReason || "-"}
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
           </tbody>
@@ -264,36 +287,34 @@ function Logs() {
       </div>
 
       {/* Pagination */}
-      <div className="flex justify-between items-center mt-4 text-sm">
+      <div className="flex justify-between items-center text-sm">
         <button
-          disabled={page === 1 || loading}
+          disabled={page === 1}
           onClick={() => setPage(page - 1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          className="px-4 py-2 bg-gray-200 rounded"
         >
           Prev
         </button>
 
-        <span className="font-medium">
+        <span>
           Page {page} / {totalPages}
         </span>
 
         <button
-          disabled={page === totalPages || loading}
+          disabled={page === totalPages}
           onClick={() => setPage(page + 1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          className="px-4 py-2 bg-gray-200 rounded"
         >
           Next
         </button>
       </div>
 
-      {/* 📤 Export Modal */}
       <ExportLogsModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
         onExport={(options) => handleExport(options.format, options)}
       />
 
-      {/* 🔍 Log Details Modal */}
       {selectedLog && (
         <LogDetailsModal
           log={selectedLog}

@@ -8,6 +8,7 @@ logs/*
 
 release_phase1/
 
+
 # Ignore models but keep folder
 detection-engine/models/*
 !detection-engine/models/.gitkeep
