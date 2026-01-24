@@ -1,4 +1,24 @@
-import PerModelProbabilityChart from "./charts/PerModelProbabilityChart";
+import PerModelConfidenceChart from "./charts/PerModelConfidenceChart";
+
+/* ================= COLOR HELPERS ================= */
+
+const labelClass = (label) => {
+  if (label === "ATTACK") return "bg-red-100 text-red-700";
+  if (label === "SUSPICIOUS") return "bg-yellow-100 text-yellow-800";
+  return "bg-green-100 text-green-700"; // BENIGN
+};
+
+const severityClass = (severity) => {
+  if (severity === "HIGH") return "bg-red-600 text-white";
+  if (severity === "MEDIUM") return "bg-yellow-400 text-black";
+  return "bg-green-200 text-green-800"; // LOW
+};
+
+const confidenceBarClass = (confidence) => {
+  if (confidence >= 0.7) return "bg-red-500";
+  if (confidence >= 0.5) return "bg-yellow-400";
+  return "bg-green-500";
+};
 
 function LogDetailsModal({ log, onClose }) {
   if (!log) return null;
@@ -16,38 +36,115 @@ function LogDetailsModal({ log, onClose }) {
         </button>
 
         {/* ===== HEADER ===== */}
-        <h2 className="text-xl font-bold mb-4">Log Details</h2>
+        <h2 className="text-xl font-bold mb-6">
+          Detection Log Details
+        </h2>
 
-        <div className="grid grid-cols-2 gap-y-2 text-sm mb-6">
-          <p><b>Time:</b> {new Date(log.timestamp).toLocaleString()}</p>
-          <p><b>Final Label:</b> {log.finalLabel}</p>
+        {/* ===== SUMMARY ===== */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
 
-          <p><b>Source IP:</b> {log.sourceIP}</p>
-          <p><b>Destination IP:</b> {log.destinationIP}</p>
+          <div>
+            <p className="text-gray-500">Timestamp</p>
+            <p className="font-mono">
+              {new Date(log.timestamp).toLocaleString()}
+            </p>
+          </div>
 
-          <p><b>Final Probability:</b> {(log.probability * 100).toFixed(2)}%</p>
-          <p><b>Model Used:</b> {log.modelUsed || "ENSEMBLE"}</p>
+          <div>
+            <p className="text-gray-500">Ensemble Confidence</p>
+            <div className="mt-1">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${confidenceBarClass(
+                    log.confidence || 0
+                  )}`}
+                  style={{ width: `${(log.confidence || 0) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs font-semibold mt-1">
+                {((log.confidence || 0) * 100).toFixed(2)}%
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-gray-500">Source IP</p>
+            <p className="font-mono">{log.sourceIP}</p>
+          </div>
+
+          <div>
+            <p className="text-gray-500">Destination IP</p>
+            <p className="font-mono">{log.destinationIP}</p>
+          </div>
+
+          <div>
+            <p className="text-gray-500">Final Label</p>
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${labelClass(
+                log.finalLabel
+              )}`}
+            >
+              {log.finalLabel}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-gray-500">Severity Level</p>
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${severityClass(
+                log.severity
+              )}`}
+            >
+              {log.severity}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-gray-500">Hybrid Decision</p>
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${labelClass(
+                log.hybridLabel
+              )}`}
+            >
+              {log.hybridLabel}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-gray-500">Aggregation Strategy</p>
+            <p className="font-medium">
+              {log.aggregationMethod || "Ensemble Voting"}
+            </p>
+          </div>
         </div>
 
-        {/* ===== PER MODEL PROBABILITY ===== */}
-        <div className="mb-10">
+        {/* ===== PER-MODEL CONFIDENCE ===== */}
+        <div className="mb-8">
           <h3 className="font-semibold mb-3">
-            Per-Model Probability (Explainability)
+            Per-Model Confidence (Explainability)
           </h3>
 
-          {/* ✅ PASS PROP CORRECTLY */}
-          <PerModelProbabilityChart perModel={log.perModel} />
+          {log.modelProbabilities &&
+          Object.keys(log.modelProbabilities).length > 0 ? (
+            <PerModelConfidenceChart
+              modelProbabilities={log.modelProbabilities}
+            />
+          ) : (
+            <p className="text-sm text-gray-500">
+              No per-model confidence data available
+            </p>
+          )}
         </div>
 
         {/* ===== EXTRACTED FEATURES ===== */}
         <div>
           <h3 className="font-semibold mb-3">
-            Extracted Features
+            Extracted Flow Features
           </h3>
 
           {!log.features || Object.keys(log.features).length === 0 ? (
             <p className="text-gray-500 text-sm">
-              No feature data available
+              Feature data not stored for this detection
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -59,7 +156,7 @@ function LogDetailsModal({ log, onClose }) {
                   <span className="text-gray-600">{key}</span>
                   <span className="font-mono font-medium text-gray-900">
                     {typeof value === "number"
-                      ? value.toString()
+                      ? value.toFixed(4)
                       : value}
                   </span>
                 </div>

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   getDetectionDistribution,
-  getProbabilityBands,
-  getPerModelAverageProbability,
+  getConfidenceBands,
+  getPerModelAverageConfidence,
   getModelDominanceFrequency,
   getModelAgreementMatrix,
   getEnsembleVsBestModel,
@@ -34,11 +34,11 @@ function GlobalSecurityOverview() {
       .then(res => setDistribution(res.data))
       .catch(console.error);
 
-    getProbabilityBands()
+    getConfidenceBands()
       .then(res => setBands(res.data))
       .catch(console.error);
 
-    getPerModelAverageProbability()
+    getPerModelAverageConfidence()
       .then(res => setAvgProb(res.data))
       .catch(console.error);
 

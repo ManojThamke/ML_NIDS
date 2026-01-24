@@ -21,12 +21,11 @@ const severityClass = (severity) => {
   return "bg-green-200 text-green-800"; // LOW
 };
 
-const rowAccentClass = (severity) => {
-  if (severity === "HIGH") return "border-l-2 border-red-500";
-  if (severity === "MEDIUM") return "border-l-2 border-yellow-400";
-  return "border-l-2 border-green-500"; // LOW
+const confidenceBarClass = (confidence) => {
+  if (confidence >= 0.7) return "bg-red-500";
+  if (confidence >= 0.5) return "bg-yellow-400";
+  return "bg-green-500";
 };
-
 
 function Logs() {
   const [logs, setLogs] = useState([]);
@@ -110,7 +109,7 @@ function Logs() {
 
       <LogsInsights />
 
-      {/* 🔍 Filters (Sticky) */}
+      {/* 🔍 Filters */}
       <div className="sticky top-[72px] z-20 bg-white rounded-xl p-4 shadow border grid grid-cols-6 gap-4">
         <select
           value={label}
@@ -217,132 +216,108 @@ function Logs() {
         </div>
       </div>
 
-      {/* 📈 Charts */}
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-8">
-          <TrafficTimelineChart />
-        </div>
-        <div className="col-span-4">
-          <TopAttackedDestinationsChart />
-        </div>
-      </div>
-
       {/* 📊 Logs Table */}
-      <div className="overflow-x-auto bg-white rounded-xl shadow border">
-        <table className="min-w-full text-sm text-center">
-          <thead className="bg-gray-100 uppercase text-xs">
-            <tr>
-              <th className="px-3 py-2">Time</th>
-              <th className="px-3 py-2">Source IP</th>
-              <th className="px-3 py-2">Destination IP</th>
-              <th className="px-3 py-2">Confidence</th>
-              <th className="px-3 py-2">ML</th>
-              <th className="px-3 py-2">Hybrid</th>
-              <th className="px-3 py-2">Severity</th>
-              {showAdvanced && (
-                <>
-                  <th className="px-3 py-2">Protocol</th>
-                  <th className="px-3 py-2">Port</th>
-                  <th className="px-3 py-2">Reason</th>
-                </>
-              )}
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading && (
+      <div className="bg-white rounded-xl shadow border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm text-center">
+            <thead className="bg-gray-50 uppercase text-xs text-gray-600">
               <tr>
-                <td colSpan="10" className="py-10 text-gray-400">
-                  🛡️ Loading traffic logs…
-                </td>
+                <th className="px-3 py-3">Time</th>
+                <th className="px-3 py-3">Source IP</th>
+                <th className="px-3 py-3">Destination IP</th>
+                <th className="px-3 py-3">Confidence</th>
+                <th className="px-3 py-3">ML</th>
+                <th className="px-3 py-3">Hybrid</th>
+                <th className="px-3 py-3">Severity</th>
+                {showAdvanced && (
+                  <>
+                    <th className="px-3 py-3">Protocol</th>
+                    <th className="px-3 py-3">Port</th>
+                    <th className="px-3 py-3">Reason</th>
+                  </>
+                )}
               </tr>
-            )}
+            </thead>
 
-            {!loading && logs.length === 0 && (
-              <tr>
-                <td colSpan="10" className="py-10 text-gray-400">
-                  🛡️ No traffic logs available
-                </td>
-              </tr>
-            )}
+            <tbody>
+              {!loading &&
+                logs.map((log) => (
+                  <tr
+                    key={log._id}
+                    onClick={() => setSelectedLog(log)}
+                    className={`border-b cursor-pointer transition
+                      ${log.severity === "HIGH"
+                        ? "bg-red-50 hover:bg-red-100"
+                        : log.severity === "MEDIUM"
+                        ? "bg-yellow-50 hover:bg-yellow-100"
+                        : "hover:bg-gray-50"
+                      }`}
+                  >
+                    <td className="px-3 py-2 font-mono">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2 font-mono">{log.sourceIP}</td>
+                    <td className="px-3 py-2 font-mono">{log.destinationIP}</td>
 
-            {!loading &&
-              logs.map((log) => (
-                <tr
-                  key={log._id}
-                  onClick={() => setSelectedLog(log)}
-                  className={`border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${rowAccentClass(
-                    log.severity
-                  )}`}
-                >
+                    {/* Confidence */}
+                    <td className="px-3 py-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${confidenceBarClass(
+                            log.confidence
+                          )}`}
+                          style={{ width: `${log.confidence * 100}%` }}
+                        />
+                      </div>
+                      <div className="text-xs font-semibold mt-1">
+                        {(log.confidence * 100).toFixed(1)}%
+                      </div>
+                    </td>
 
-                  <td className="px-3 py-2 font-mono">
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                  <td className="px-3 py-2 font-mono">{log.sourceIP}</td>
-                  <td className="px-3 py-2 font-mono">{log.destinationIP}</td>
+                    <td>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs ${labelClass(
+                          log.finalLabel
+                        )}`}
+                      >
+                        {log.finalLabel}
+                      </span>
+                    </td>
 
-                  {/* Confidence Bar */}
-                  <td className="px-3 py-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${log.confidence >= 0.7
-                          ? "bg-red-500"
-                          : log.confidence >= 0.4
-                            ? "bg-yellow-400"
-                            : "bg-green-500"
-                          }`}
-                        style={{ width: `${log.confidence * 100}%` }}
-                      />
-                    </div>
-                    <div className="text-xs font-semibold mt-1">
-                      {(log.confidence * 100).toFixed(1)}%
-                    </div>
-                  </td>
+                    <td>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs ${labelClass(
+                          log.hybridLabel
+                        )}`}
+                      >
+                        {log.hybridLabel}
+                      </span>
+                    </td>
 
-                  <td>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs ${labelClass(
-                        log.finalLabel
-                      )}`}
-                    >
-                      {log.finalLabel}
-                    </span>
-                  </td>
+                    <td>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs ${severityClass(
+                          log.severity
+                        )}`}
+                      >
+                        {log.severity}
+                      </span>
+                    </td>
 
-                  <td>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs ${labelClass(
-                        log.hybridLabel
-                      )}`}
-                    >
-                      {log.hybridLabel}
-                    </span>
-                  </td>
-
-                  <td>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs ${severityClass(
-                        log.severity
-                      )}`}
-                    >
-                      {log.severity}
-                    </span>
-                  </td>
-
-                  {showAdvanced && (
-                    <>
-                      <td className="text-xs">{log.protocol || "-"}</td>
-                      <td className="text-xs">{log.dstPort || "-"}</td>
-                      <td className="text-xs truncate max-w-[180px]">
-                        {log.hybridReason || "-"}
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
-          </tbody>
-        </table>
+                    {showAdvanced && (
+                      <>
+                        <td className="text-xs">{log.protocol || "-"}</td>
+                        <td className="text-xs">{log.dstPort || "-"}</td>
+                        <td className="text-xs truncate max-w-[180px]">
+                          {log.hybridReason || "-"}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
