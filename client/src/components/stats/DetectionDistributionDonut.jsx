@@ -8,26 +8,20 @@ import {
 
 /* 🎨 ML-NIDS Theme Colors */
 const COLORS = {
-  Benign: "#10b981", // soft green
-  Attack: "#ef4444", // soft red
+  Benign: "#10b981", // green
+  Attack: "#ef4444", // red
 };
 
-/* Clean dashboard tooltip */
+/* Tooltip */
 const CustomTooltip = ({ active, payload }) => {
-  if (!active || !payload || !payload.length) return null;
-
+  if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
 
   return (
     <div className="bg-gray-900 text-white rounded-lg px-4 py-2 shadow-lg">
-      <p className="text-sm font-semibold mb-1">
-        {name}
-      </p>
+      <p className="text-sm font-semibold mb-1">{name}</p>
       <p className="text-sm text-gray-300">
-        Alerts:{" "}
-        <span className="font-semibold text-white">
-          {value}
-        </span>
+        Alerts: <span className="font-semibold">{Math.round(value)}</span>
       </p>
     </div>
   );
@@ -37,7 +31,7 @@ function DetectionDistributionDonut({ data }) {
   const attack = data?.attack ?? 0;
   const benign = data?.benign ?? 0;
 
-  /* 🔧 ensure donut always renders */
+  /* 🔒 keep math correct but allow render */
   const safeAttack = attack === 0 ? 0.0001 : attack;
   const safeBenign = benign === 0 ? 0.0001 : benign;
 
@@ -55,7 +49,7 @@ function DetectionDistributionDonut({ data }) {
         Detection Distribution
       </h3>
 
-      {/* 🔥 Fixed-height chart area */}
+      {/* Donut */}
       <div className="h-[235px] flex items-center justify-center relative">
         <ResponsiveContainer width={240} height={240}>
           <PieChart>
@@ -64,17 +58,18 @@ function DetectionDistributionDonut({ data }) {
               dataKey="value"
               cx="50%"
               cy="50%"
-              innerRadius={70}
-              outerRadius={90}
-              paddingAngle={2}
-              stroke="#f9fafb"
-              strokeWidth={4}
-
-              /* 🔥 Smooth donut animation */
-              isAnimationActive={true}
-              animationBegin={300}
-              animationDuration={2600}
-              animationEasing="linear"
+              innerRadius={72}
+              outerRadius={92}
+              paddingAngle={1.5}
+              cornerRadius={6}
+              startAngle={90}
+              endAngle={-270}
+              stroke="#ffffff"
+              strokeWidth={3}
+              isAnimationActive
+              animationBegin={200}
+              animationDuration={2200}
+              animationEasing="ease-in-out"
             >
               {chartData.map((entry) => (
                 <Cell
@@ -88,7 +83,7 @@ function DetectionDistributionDonut({ data }) {
           </PieChart>
         </ResponsiveContainer>
 
-        {/* Center Text */}
+        {/* Center label */}
         <div className="absolute flex flex-col items-center justify-center">
           <p className="text-xl font-bold text-red-600">
             {attackPercent}%
@@ -110,7 +105,7 @@ function DetectionDistributionDonut({ data }) {
         </span>
       </div>
 
-      {/* Explanation line */}
+      {/* Insight */}
       <p className="-mt-1 text-sm text-gray-600 text-center leading-snug">
         Shows the overall proportion of benign versus attack traffic.
       </p>
