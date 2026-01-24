@@ -21,6 +21,13 @@ const severityClass = (severity) => {
   return "bg-green-200 text-green-800"; // LOW
 };
 
+const rowAccentClass = (severity) => {
+  if (severity === "HIGH") return "border-l-2 border-red-500";
+  if (severity === "MEDIUM") return "border-l-2 border-yellow-400";
+  return "border-l-2 border-green-500"; // LOW
+};
+
+
 function Logs() {
   const [logs, setLogs] = useState([]);
   const [page, setPage] = useState(1);
@@ -103,8 +110,8 @@ function Logs() {
 
       <LogsInsights />
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow border grid grid-cols-6 gap-4">
+      {/* 🔍 Filters (Sticky) */}
+      <div className="sticky top-[72px] z-20 bg-white rounded-xl p-4 shadow border grid grid-cols-6 gap-4">
         <select
           value={label}
           onChange={(e) => {
@@ -176,7 +183,7 @@ function Logs() {
         </label>
       </div>
 
-      {/* Controls */}
+      {/* 🔄 Controls */}
       <div className="flex items-center gap-4 text-sm">
         <label className="flex items-center gap-2">
           <input
@@ -187,6 +194,12 @@ function Logs() {
           />
           Auto Refresh (5s)
         </label>
+
+        {autoRefresh && (
+          <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs">
+            LIVE
+          </span>
+        )}
 
         {refreshing && (
           <span className="text-xs text-gray-500 animate-pulse">
@@ -204,7 +217,7 @@ function Logs() {
         </div>
       </div>
 
-      {/* Charts */}
+      {/* 📈 Charts */}
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-8">
           <TrafficTimelineChart />
@@ -214,7 +227,7 @@ function Logs() {
         </div>
       </div>
 
-      {/* Logs Table */}
+      {/* 📊 Logs Table */}
       <div className="overflow-x-auto bg-white rounded-xl shadow border">
         <table className="min-w-full text-sm text-center">
           <thead className="bg-gray-100 uppercase text-xs">
@@ -237,36 +250,82 @@ function Logs() {
           </thead>
 
           <tbody>
+            {loading && (
+              <tr>
+                <td colSpan="10" className="py-10 text-gray-400">
+                  🛡️ Loading traffic logs…
+                </td>
+              </tr>
+            )}
+
+            {!loading && logs.length === 0 && (
+              <tr>
+                <td colSpan="10" className="py-10 text-gray-400">
+                  🛡️ No traffic logs available
+                </td>
+              </tr>
+            )}
+
             {!loading &&
               logs.map((log) => (
                 <tr
                   key={log._id}
                   onClick={() => setSelectedLog(log)}
-                  className="border-b hover:bg-gray-50 cursor-pointer"
+                  className={`border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${rowAccentClass(
+                    log.severity
+                  )}`}
                 >
+
                   <td className="px-3 py-2 font-mono">
                     {new Date(log.timestamp).toLocaleString()}
                   </td>
                   <td className="px-3 py-2 font-mono">{log.sourceIP}</td>
                   <td className="px-3 py-2 font-mono">{log.destinationIP}</td>
-                  <td className="px-3 py-2 font-semibold">
-                    {(log.confidence * 100).toFixed(2)}%
+
+                  {/* Confidence Bar */}
+                  <td className="px-3 py-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${log.confidence >= 0.7
+                          ? "bg-red-500"
+                          : log.confidence >= 0.4
+                            ? "bg-yellow-400"
+                            : "bg-green-500"
+                          }`}
+                        style={{ width: `${log.confidence * 100}%` }}
+                      />
+                    </div>
+                    <div className="text-xs font-semibold mt-1">
+                      {(log.confidence * 100).toFixed(1)}%
+                    </div>
                   </td>
 
                   <td>
-                    <span className={`px-3 py-1 rounded-full text-xs ${labelClass(log.finalLabel)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs ${labelClass(
+                        log.finalLabel
+                      )}`}
+                    >
                       {log.finalLabel}
                     </span>
                   </td>
 
                   <td>
-                    <span className={`px-3 py-1 rounded-full text-xs ${labelClass(log.hybridLabel)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs ${labelClass(
+                        log.hybridLabel
+                      )}`}
+                    >
                       {log.hybridLabel}
                     </span>
                   </td>
 
                   <td>
-                    <span className={`px-3 py-1 rounded-full text-xs ${severityClass(log.severity)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs ${severityClass(
+                        log.severity
+                      )}`}
+                    >
                       {log.severity}
                     </span>
                   </td>
