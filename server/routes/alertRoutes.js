@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const {
   createAlert,
   getAlerts,
@@ -11,18 +12,32 @@ const {
   getTopAttackedDestinations,
 } = require("../controllers/alertController");
 
+/* =====================================================
+   ALERT INGESTION (Python → Backend)
+===================================================== */
 router.post("/", createAlert);
 
-// Dashboard routes
+/* =====================================================
+   DASHBOARD
+===================================================== */
 router.get("/", getAlerts);
 router.get("/stats", getAlertStats);
 
-// Logs routes
+/* =====================================================
+   LOGS (TABLE + SEARCH + PAGINATION)
+===================================================== */
 router.get("/logs", getLogs);
+
+/* =====================================================
+   EXPORT
+===================================================== */
 router.get("/export", exportLogs);
+
+/* =====================================================
+   LOG ANALYTICS
+===================================================== */
 router.get("/logs/insights", getLogsInsights);
 router.get("/logs/timeline", getTrafficTimeline);
 router.get("/logs/top-destinations", getTopAttackedDestinations);
-
 
 module.exports = router;

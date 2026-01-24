@@ -3,43 +3,37 @@ const { Parser } = require("json2csv");
 
 /* =====================================================
    CREATE ALERT (Python → Backend)
-   POST /api/alerts
-   ✅ Parses per_model & features safely
 ===================================================== */
 exports.createAlert = async (req, res) => {
   try {
     const body = { ...req.body };
 
-    // ✅ FIX: per_model may already be an object
+    // per_model may arrive as string or object
     if (body.per_model) {
-      if (typeof body.per_model === "string") {
-        body.perModel = JSON.parse(body.per_model);
-      } else {
-        body.perModel = body.per_model;
-      }
+      body.modelProbabilities =
+        typeof body.per_model === "string"
+          ? JSON.parse(body.per_model)
+          : body.per_model;
       delete body.per_model;
     }
 
-    // ✅ FIX: features may already be an object
-    if (body.features) {
-      if (typeof body.features === "string") {
-        body.features = JSON.parse(body.features);
-      }
+    // features safety
+    if (body.features && typeof body.features === "string") {
+      body.features = JSON.parse(body.features);
     }
 
     const alert = new Alert(body);
-    const savedAlert = await alert.save();
+    const saved = await alert.save();
 
-    res.status(201).json(savedAlert);
-  } catch (error) {
-    console.error("Create alert error:", error);
-    res.status(400).json({ error: error.message });
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error("Create alert error:", err);
+    res.status(400).json({ error: err.message });
   }
 };
 
-
 /* =====================================================
-   DASHBOARD TABLE (LATEST ONLY)
+   DASHBOARD TABLE (LATEST)
 ===================================================== */
 exports.getAlerts = async (req, res) => {
   try {
@@ -48,14 +42,14 @@ exports.getAlerts = async (req, res) => {
       .limit(10)
       .lean();
 
-    res.status(200).json(alerts);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(alerts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
 /* =====================================================
-   DASHBOARD STATS (GLOBAL)
+   DASHBOARD STATS
 ===================================================== */
 exports.getAlertStats = async (req, res) => {
   try {
@@ -78,11 +72,11 @@ exports.getAlertStats = async (req, res) => {
 };
 
 /* =====================================================
-   LOGS API (FILTER + SEARCH + PAGINATION)
+   LOGS (FILTER + SEARCH + PAGINATION)
 ===================================================== */
 exports.getLogs = async (req, res) => {
   try {
-    let { page = 1, limit = 50, label, minProb, maxProb, search } = req.query;
+    let { page = 1, limit = 50, label, minConf, maxConf, search } = req.query;
 
     page = Math.max(parseInt(page), 1);
     limit = Math.min(parseInt(limit), 200);
@@ -91,10 +85,10 @@ exports.getLogs = async (req, res) => {
 
     if (label) query.finalLabel = label.toUpperCase();
 
-    if (minProb || maxProb) {
-      query.probability = {};
-      if (minProb) query.probability.$gte = Number(minProb);
-      if (maxProb) query.probability.$lte = Number(maxProb);
+    if (minConf || maxConf) {
+      query.confidence = {};
+      if (minConf) query.confidence.$gte = Number(minConf);
+      if (maxConf) query.confidence.$lte = Number(maxConf);
     }
 
     if (search) {
@@ -121,86 +115,101 @@ exports.getLogs = async (req, res) => {
       limit,
       totalPages: Math.ceil(total / limit),
     });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
 /* =====================================================
-   EXPORT LOGS (FULL DATASET – FAST)
+   EXPORT LOGS (CSV / JSON)
 ===================================================== */
 exports.exportLogs = async (req, res) => {
   try {
-    const { label, minProb, maxProb, search, format = "csv", range, onlyAttack } =
-      req.query;
+    const {
+      format = "csv",
+      range = "24h",
+      onlyAttack,
+      includeMeta,
+      includeModelProb,
+    } = req.query;
+
+    const now = Date.now();
+    const rangeMap = {
+      "1h": 60 * 60 * 1000,
+      "24h": 24 * 60 * 60 * 1000,
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+    };
 
     const query = {};
-
-    if (label) query.finalLabel = label.toUpperCase();
-    if (onlyAttack === "true") query.finalLabel = "ATTACK";
-
-    if (minProb || maxProb) {
-      query.probability = {};
-      if (minProb) query.probability.$gte = Number(minProb);
-      if (maxProb) query.probability.$lte = Number(maxProb);
+    if (rangeMap[range]) {
+      query.createdAt = { $gte: new Date(now - rangeMap[range]) };
     }
 
-    if (range) {
-      const now = Date.now();
-      const map = {
-        "1h": 60 * 60 * 1000,
-        "24h": 24 * 60 * 60 * 1000,
-        "7d": 7 * 24 * 60 * 60 * 1000,
-        "30d": 30 * 24 * 60 * 60 * 1000,
-      };
-      if (map[range]) {
-        query.createdAt = { $gte: new Date(now - map[range]) };
-      }
-    }
-
-    if (search) {
-      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      query.$or = [
-        { sourceIP: { $regex: safe, $options: "i" } },
-        { destinationIP: { $regex: safe, $options: "i" } },
-      ];
+    if (onlyAttack === "true") {
+      query.finalLabel = "ATTACK";
     }
 
     const logs = await Alert.find(query).sort({ createdAt: -1 }).lean();
 
+    const rows = logs.map((log) => {
+      const row = {
+        timestamp: new Date(log.timestamp || log.createdAt).toISOString(),
+        sourceIP: log.sourceIP,
+        destinationIP: log.destinationIP,
+        srcPort: log.srcPort,
+        dstPort: log.dstPort,
+        protocol: log.protocol,
+        finalLabel: log.finalLabel,
+        confidence: +(log.confidence * 100).toFixed(2),
+        severity: log.severity,
+        attackVotes: log.attackVotes,
+        totalModels: log.totalModels,
+      };
+
+      if (includeMeta === "true") {
+        row.flowDuration = log.flowDuration;
+        row.threshold = log.threshold;
+        row.voteK = log.voteK;
+        row.aggregationMethod = log.aggregationMethod;
+        row.hybridLabel = log.hybridLabel;
+        row.hybridReason = log.hybridReason;
+      }
+
+      if (includeModelProb === "true" && log.modelProbabilities) {
+        Object.entries(log.modelProbabilities).forEach(([model, prob]) => {
+          row[`prob_${model}`] = +(prob * 100).toFixed(2);
+        });
+      }
+
+      return row;
+    });
+
     if (format === "json") {
-      res.setHeader("Content-Type", "application/json");
       res.setHeader(
         "Content-Disposition",
-        "attachment; filename=traffic_logs.json"
+        `attachment; filename=detection_logs_${range}.json`
       );
-      return res.send(logs);
+      return res.json(rows);
     }
 
-    const fields = [
-      "timestamp",
-      "sourceIP",
-      "destinationIP",
-      "probability",
-      "finalLabel",
-    ];
-
-    const csv = new Parser({ fields }).parse(logs);
+    const parser = new Parser();
+    const csv = parser.parse(rows);
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=traffic_logs.csv"
+      `attachment; filename=detection_logs_${range}.csv`
     );
     res.send(csv);
-  } catch (error) {
-    console.error("Export error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Export error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
 /* =====================================================
-   GLOBAL LOGS INSIGHTS
+   GLOBAL LOG INSIGHTS
 ===================================================== */
 exports.getLogsInsights = async (req, res) => {
   try {
@@ -223,7 +232,7 @@ exports.getLogsInsights = async (req, res) => {
       ]),
       Alert.countDocuments({ finalLabel: "ATTACK" }),
       Alert.countDocuments({ finalLabel: "BENIGN" }),
-      Alert.countDocuments({ probability: { $gte: 0.7 } }),
+      Alert.countDocuments({ confidence: { $gte: 0.7 } }),
     ]);
 
     res.json({
@@ -239,15 +248,17 @@ exports.getLogsInsights = async (req, res) => {
 };
 
 /* =====================================================
-   TOP ATTACKED DESTINATIONS (GLOBAL)
+   TOP ATTACKED DESTINATIONS
 ===================================================== */
 exports.getTopAttackedDestinations = async (req, res) => {
   try {
+    const limit = parseInt(req.query.limit || 5);
+
     const data = await Alert.aggregate([
       { $match: { finalLabel: "ATTACK" } },
       { $group: { _id: "$destinationIP", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
-      { $limit: 5 },
+      { $limit: limit },
     ]);
 
     res.json(
@@ -257,44 +268,45 @@ exports.getTopAttackedDestinations = async (req, res) => {
       }))
     );
   } catch (err) {
+    console.error("Top attacked destinations error:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
 /* =====================================================
-   TRAFFIC TIMELINE (ALIGNED & STABLE)
+   TRAFFIC TIMELINE (LOG VOLUME OVER TIME)
 ===================================================== */
 exports.getTrafficTimeline = async (req, res) => {
   try {
-    const { range = "1h" } = req.query;
+    const { range = "24h" } = req.query;
 
     const now = Date.now();
-    const config = {
-      "1h": { ms: 60 * 60 * 1000, bucket: 60 * 1000 },
-      "2h": { ms: 2 * 60 * 60 * 1000, bucket: 2 * 60 * 1000 },
-      "24h": { ms: 24 * 60 * 60 * 1000, bucket: 5 * 60 * 1000 },
-      "7d": { ms: 7 * 24 * 60 * 60 * 1000, bucket: 60 * 60 * 1000 },
-      "30d": { ms: 30 * 24 * 60 * 60 * 1000, bucket: 6 * 60 * 60 * 1000 },
-      "1y": { ms: 365 * 24 * 60 * 60 * 1000, bucket: 24 * 60 * 60 * 1000 },
+    const rangeMap = {
+      "1h": 60 * 60 * 1000,
+      "2h": 2 * 60 * 60 * 1000,
+      "24h": 24 * 60 * 60 * 1000,
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
     };
 
-    const cfg = config[range] || config["24h"];
+    const windowMs = rangeMap[range] || rangeMap["24h"];
 
     const data = await Alert.aggregate([
-      { $match: { createdAt: { $gte: new Date(now - cfg.ms) } } },
       {
-        $project: {
-          bucket: {
-            $toDate: {
-              $subtract: [
-                { $toLong: "$createdAt" },
-                { $mod: [{ $toLong: "$createdAt" }, cfg.bucket] },
-              ],
-            },
-          },
+        $match: {
+          createdAt: { $gte: new Date(now - windowMs) },
         },
       },
-      { $group: { _id: "$bucket", count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d %H:%M",
+              date: "$createdAt",
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
       { $sort: { _id: 1 } },
     ]);
 
@@ -305,6 +317,7 @@ exports.getTrafficTimeline = async (req, res) => {
       }))
     );
   } catch (err) {
+    console.error("Traffic timeline error:", err);
     res.status(500).json({ error: err.message });
   }
 };

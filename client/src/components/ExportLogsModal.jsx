@@ -4,18 +4,18 @@ function ExportLogsModal({ isOpen, onClose, onExport }) {
   const [format, setFormat] = useState("csv");
   const [range, setRange] = useState("24h");
   const [onlyAttack, setOnlyAttack] = useState(false);
-  const [includeMeta, setIncludeMeta] = useState(false);
+  const [includeMetadata, setIncludeMetadata] = useState(false);
   const [includeModelProb, setIncludeModelProb] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = () => {
     onExport({
-      format,
-      range,
-      onlyAttack,
-      includeMeta,
-      includeModelProb,
+      format,                 // csv | json
+      range,                  // 1h | 24h | 7d | 30d
+      onlyAttack,             // finalLabel filter
+      includeMetadata,        // packet + flow fields
+      includeModelProb,       // modelProbabilities
     });
     onClose();
   };
@@ -24,7 +24,7 @@ function ExportLogsModal({ isOpen, onClose, onExport }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div className="bg-white rounded-2xl w-[380px] p-6 shadow-xl relative">
 
-        {/* ❌ Close */}
+        {/* Close */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
@@ -51,12 +51,13 @@ function ExportLogsModal({ isOpen, onClose, onExport }) {
             CSV
           </label>
 
-          <label className="flex items-center gap-2 mb-2">
-            <input 
-            type="radio" 
-            checked={format === "json"}
-            onChange={() => setFormat("json")}
-            className="accent-pink-500" />
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={format === "json"}
+              onChange={() => setFormat("json")}
+              className="accent-pink-500"
+            />
             JSON
           </label>
         </div>
@@ -81,8 +82,8 @@ function ExportLogsModal({ isOpen, onClose, onExport }) {
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
-              checked={includeMeta}
-              onChange={() => setIncludeMeta(!includeMeta)}
+              checked={includeMetadata}
+              onChange={() => setIncludeMetadata(!includeMetadata)}
               className="accent-pink-500"
             />
             Include Raw Packet Metadata
