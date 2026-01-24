@@ -13,35 +13,35 @@ const {
 } = require("../controllers/statsController");
 
 /**
- * ================================
- * DISTRIBUTION
- * ================================
+ * =====================================
+ * TRAFFIC / LABEL DISTRIBUTION
+ * =====================================
  */
-router.get("/detection-distribution", getDetectionDistribution);
+router.get("/distribution", getDetectionDistribution);
 
 /**
- * ================================
- * CONFIDENCE ANALYTICS
- * ================================
+ * =====================================
+ * CONFIDENCE ANALYTICS (NOT EVALUATION)
+ * =====================================
  */
-router.get("/confidence-bands", getConfidenceBands);
-router.get("/model-avg-confidence", getPerModelAverageConfidence);
-router.get("/ensemble-vs-best", getEnsembleVsBestModel);
+router.get("/confidence/bands", getConfidenceBands);
+router.get("/confidence/per-model", getPerModelAverageConfidence);
+router.get("/confidence/ensemble-vs-best", getEnsembleVsBestModel);
 
 /**
- * ================================
+ * =====================================
  * MODEL BEHAVIOR ANALYTICS
- * ================================
+ * =====================================
  */
-router.get("/model-dominance-frequency", getModelDominanceFrequency);
-router.get("/model-agreement", getModelAgreementMatrix);
+router.get("/models/dominance", getModelDominanceFrequency);
+router.get("/models/agreement", getModelAgreementMatrix);
 
 /**
- * ================================
+ * =====================================
  * ATTACK INTELLIGENCE
- * ================================
+ * =====================================
  */
-router.get("/attack-timeline", getAttackTimeline);
-router.get("/top-attacked-destinations", getTopAttackedDestinations);
+router.get("/attacks/timeline", getAttackTimeline);
+router.get("/attacks/top-destinations", getTopAttackedDestinations);
 
 module.exports = router;

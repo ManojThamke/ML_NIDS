@@ -59,14 +59,14 @@ function TrafficTimelineChart() {
     fetchTimeline();
   }, [fetchTimeline]);
 
-  /* ================= AUTO REFRESH ================= */
+  /* ================= AUTO REFRESH (SMOOTH) ================= */
   useEffect(() => {
-    const interval = setInterval(fetchTimeline, 2000);
+    const interval = setInterval(fetchTimeline, 5000); // 🔥 slower & realistic
     return () => clearInterval(interval);
   }, [fetchTimeline]);
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
+    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col animate-fade-in">
       {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-semibold text-gray-700">
@@ -92,16 +92,16 @@ function TrafficTimelineChart() {
         </div>
       </div>
 
-      {/* Refresh Indicator (no layout shift) */}
+      {/* Refresh Indicator */}
       <p
-        className={`text-xs text-gray-400 mb-1 transition-opacity duration-200
+        className={`text-xs text-gray-400 mb-1 transition-opacity duration-300
           ${refreshing ? "opacity-100 animate-pulse" : "opacity-0"}
         `}
       >
         Updating timeline…
       </p>
 
-      {/* 🔥 Fixed-height chart area */}
+      {/* Chart */}
       <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
@@ -144,14 +144,15 @@ function TrafficTimelineChart() {
               stroke="#ef4444"
               strokeWidth={3}
               fill="url(#timelineGradient)"
-              isAnimationActive
-              animationDuration={700}
+              isAnimationActive={true}
+              animationDuration={1600}          // 🔥 slower
+              animationEasing="ease-in-out"     // 🔥 smoother
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation line */}
+      {/* Explanation */}
       <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
         Displays network traffic volume over time with live updates.
       </p>

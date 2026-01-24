@@ -13,13 +13,12 @@ import { getTopDestinations } from "../../api";
 
 /* 🎨 Soft attack-themed pastel colors */
 const COLORS = [
-  "#ef4444", // Strong red (high risk)
-  "#f87171", // Medium red
-  "#fca5a5", // Soft red
-  "#fecaca", // Very light red
-  "#fee2e2", // Faded red (background-safe)
+  "#ef4444", // Strong red
+  "#f87171",
+  "#fca5a5",
+  "#fecaca",
+  "#fee2e2",
 ];
-
 
 /* Clean dashboard tooltip */
 const CustomTooltip = ({ active, payload }) => {
@@ -28,12 +27,12 @@ const CustomTooltip = ({ active, payload }) => {
   const { destination, count } = payload[0].payload;
 
   return (
-    <div className="bg-white border rounded-lg px-4 py-2 shadow-lg">
-      <p className="text-sm font-semibold text-gray-700 mb-1">
+    <div className="bg-gray-900 text-white rounded-lg px-4 py-2 shadow-lg">
+      <p className="text-sm font-semibold mb-1">
         {destination}
       </p>
-      <p className="text-sm text-gray-600">
-        Attacks: <span className="font-semibold">{count}</span>
+      <p className="text-sm text-gray-300">
+        Attacks: <span className="font-semibold text-white">{count}</span>
       </p>
     </div>
   );
@@ -50,7 +49,7 @@ function TopAttackedDestinationsChart() {
 
   if (!data.length) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border">
+      <div className="bg-white rounded-xl p-6 shadow-sm border animate-fade-in">
         <p className="text-sm text-gray-500">
           No attacked destination data available
         </p>
@@ -59,12 +58,12 @@ function TopAttackedDestinationsChart() {
   }
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
+    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col animate-fade-in">
       <h3 className="font-semibold mb-2 text-gray-700">
         Top Attacked Destinations
       </h3>
 
-      {/* 🔥 Fixed-height chart area */}
+      {/* Chart */}
       <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -94,7 +93,14 @@ function TopAttackedDestinationsChart() {
 
             <Tooltip content={<CustomTooltip />} />
 
-            <Bar dataKey="count" radius={[0, 8, 8, 0]}>
+            <Bar
+              dataKey="count"
+              radius={[0, 8, 8, 0]}
+              isAnimationActive={true}
+              animationBegin={200}
+              animationDuration={1800}
+              animationEasing="ease-in-out"
+            >
               {data.map((_, index) => (
                 <Cell
                   key={index}
@@ -106,7 +112,7 @@ function TopAttackedDestinationsChart() {
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation line */}
+      {/* Explanation */}
       <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
         Displays the destinations most frequently targeted by detected attacks.
       </p>

@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { getLogs } from "../../api";
 
-function AttackProbabilityArea() {
+function AttackConfidenceArea() {
   const [data, setData] = useState([]);
 
   /* ================= FETCH RECENT CONFIDENCE ================= */
@@ -32,7 +32,7 @@ function AttackProbabilityArea() {
 
         setData(formatted);
       } catch (err) {
-        console.error("AttackProbabilityArea error:", err);
+        console.error("AttackConfidenceArea error:", err);
       }
     };
 
@@ -47,7 +47,7 @@ function AttackProbabilityArea() {
 
   /* ================= DYNAMIC Y-AXIS ================= */
   const maxConfidence = useMemo(() => {
-    return Math.max(...data.map(d => d.confidence), 0);
+    return Math.max(...data.map((d) => d.confidence), 0);
   }, [data]);
 
   // Zoom when benign, expand when attack appears
@@ -56,6 +56,9 @@ function AttackProbabilityArea() {
     maxConfidence < 0.3 ? 0.4 :
     1;
 
+  /* ================= FORCE REMOUNT FOR ANIMATION ================= */
+  const chartKey = data.length; // guarantees animation on refresh
+
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px]">
       <h3 className="font-semibold mb-4 text-gray-700">
@@ -63,7 +66,7 @@ function AttackProbabilityArea() {
       </h3>
 
       <ResponsiveContainer width="100%" height={240}>
-        <AreaChart data={data}>
+        <AreaChart data={data} key={chartKey}>
           <CartesianGrid
             strokeDasharray="4 4"
             stroke="#e5e7eb"
@@ -100,7 +103,7 @@ function AttackProbabilityArea() {
 
           <defs>
             <linearGradient id="confidenceGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4} />
+              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.45} />
               <stop offset="70%" stopColor="#ef4444" stopOpacity={0.2} />
               <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
             </linearGradient>
@@ -112,8 +115,9 @@ function AttackProbabilityArea() {
             stroke="#ef4444"
             strokeWidth={3}
             fill="url(#confidenceGradient)"
-            isAnimationActive
-            animationDuration={800}
+            isAnimationActive={true}
+            animationDuration={1200}
+            animationEasing="ease-out"
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -128,4 +132,4 @@ function AttackProbabilityArea() {
   );
 }
 
-export default AttackProbabilityArea;
+export default AttackConfidenceArea;

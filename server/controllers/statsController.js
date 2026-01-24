@@ -38,18 +38,14 @@ exports.getConfidenceBands = async (req, res) => {
       { label: "80–100%", min: 0.8, max: 1.0 },
     ];
 
-    const results = [];
-
-    for (const band of bands) {
-      const count = await Alert.countDocuments({
-        confidence: { $gte: band.min, $lt: band.max },
-      });
-
-      results.push({
+    const results = await Promise.all(
+      bands.map(async (band) => ({
         range: band.label,
-        count,
-      });
-    }
+        count: await Alert.countDocuments({
+          confidence: { $gte: band.min, $lt: band.max },
+        }),
+      }))
+    );
 
     res.json(results);
   } catch (err) {
@@ -61,30 +57,32 @@ exports.getConfidenceBands = async (req, res) => {
  * ======================================
  * PER-MODEL AVERAGE CONFIDENCE (GLOBAL)
  * ======================================
+ * NOTE: Confidence ≠ Accuracy
  */
 exports.getPerModelAverageConfidence = async (req, res) => {
   try {
     const pipeline = [
+      { $match: { modelProbabilities: { $exists: true } } },
       {
         $project: {
-          models: { $objectToArray: "$modelProbabilities" }
-        }
+          models: { $objectToArray: "$modelProbabilities" },
+        },
       },
       { $unwind: "$models" },
       {
         $group: {
           _id: "$models.k",
-          avgConfidence: { $avg: "$models.v" }
-        }
+          avgConfidence: { $avg: "$models.v" },
+        },
       },
       {
         $project: {
           _id: 0,
           model: "$_id",
-          avgConfidence: { $round: ["$avgConfidence", 6] }
-        }
+          avgConfidence: { $round: ["$avgConfidence", 6] },
+        },
       },
-      { $sort: { avgConfidence: -1 } }
+      { $sort: { avgConfidence: -1 } },
     ];
 
     const result = await Alert.aggregate(pipeline);
@@ -109,14 +107,11 @@ exports.getModelDominanceFrequency = async (req, res) => {
     const dominanceCount = {};
     let total = 0;
 
-    alerts.forEach(alert => {
-      const models = alert.modelProbabilities;
-      if (!models) return;
-
+    alerts.forEach((alert) => {
       let dominantModel = null;
       let maxConfidence = -1;
 
-      for (const [model, conf] of Object.entries(models)) {
+      for (const [model, conf] of Object.entries(alert.modelProbabilities)) {
         if (conf > maxConfidence) {
           maxConfidence = conf;
           dominantModel = model;
@@ -155,21 +150,23 @@ exports.getModelAgreementMatrix = async (req, res) => {
       { modelProbabilities: 1 }
     ).lean();
 
-    const models = new Set();
-    alerts.forEach(a => {
-      Object.keys(a.modelProbabilities || {}).forEach(m => models.add(m));
-    });
+    const modelSet = new Set();
+    alerts.forEach((a) =>
+      Object.keys(a.modelProbabilities || {}).forEach((m) =>
+        modelSet.add(m)
+      )
+    );
 
-    const modelList = Array.from(models);
+    const models = Array.from(modelSet);
     const matrix = {};
 
-    modelList.forEach(m1 => {
+    models.forEach((m1) => {
       matrix[m1] = {};
-      modelList.forEach(m2 => {
+      models.forEach((m2) => {
         let agree = 0;
         let total = 0;
 
-        alerts.forEach(a => {
+        alerts.forEach((a) => {
           const p = a.modelProbabilities;
           if (p?.[m1] != null && p?.[m2] != null) {
             const l1 = p[m1] >= 0.5 ? "ATTACK" : "BENIGN";
@@ -179,11 +176,12 @@ exports.getModelAgreementMatrix = async (req, res) => {
           }
         });
 
-        matrix[m1][m2] = total === 0 ? 0 : +((agree / total) * 100).toFixed(2);
+        matrix[m1][m2] =
+          total === 0 ? 0 : +((agree / total) * 100).toFixed(2);
       });
     });
 
-    res.json({ models: modelList, matrix });
+    res.json({ models, matrix });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -201,13 +199,13 @@ exports.getEnsembleVsBestModel = async (req, res) => {
       { confidence: 1, modelProbabilities: 1 }
     )
       .sort({ createdAt: 1 })
-      .limit(50);
+      .limit(50)
+      .lean();
 
     const data = alerts.map((alert, idx) => {
-      const modelValues = Object.values(alert.modelProbabilities || {});
-      const bestModelConfidence = modelValues.length
-        ? Math.max(...modelValues)
-        : 0;
+      const bestModelConfidence = Math.max(
+        ...Object.values(alert.modelProbabilities || [0])
+      );
 
       return {
         index: idx + 1,
@@ -235,7 +233,8 @@ exports.getAttackTimeline = async (req, res) => {
 
     if (range === "1h") startTime.setHours(now.getHours() - 1);
     else if (range === "6h") startTime.setHours(now.getHours() - 6);
-    else startTime.setHours(now.getHours() - 24);
+    else if (range === "24h") startTime.setHours(now.getHours() - 24);
+    else if (range === "7d") startTime.setDate(now.getDate() - 7);
 
     const timeline = await Alert.aggregate([
       {
@@ -247,9 +246,9 @@ exports.getAttackTimeline = async (req, res) => {
       {
         $group: {
           _id: {
-            minute: {
+            time: {
               $dateToString: {
-                format: "%H:%M",
+                format: "%Y-%m-%d %H:%M",
                 date: "$createdAt",
               },
             },
@@ -258,13 +257,13 @@ exports.getAttackTimeline = async (req, res) => {
           avgConfidence: { $avg: "$confidence" },
         },
       },
-      { $sort: { "_id.minute": 1 } },
+      { $sort: { "_id.time": 1 } },
     ]);
 
     res.json(
-      timeline.map(t => ({
-        time: t._id.minute,
-        attacks: t.count,
+      timeline.map((t) => ({
+        timestamp: t._id.time,
+        count: t.count,
         avgConfidence: +(t.avgConfidence * 100).toFixed(2),
       }))
     );
@@ -280,7 +279,7 @@ exports.getAttackTimeline = async (req, res) => {
  */
 exports.getTopAttackedDestinations = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit || 5);
+    const limit = parseInt(req.query.limit || 5, 10);
 
     const data = await Alert.aggregate([
       { $match: { finalLabel: "ATTACK" } },
@@ -295,9 +294,9 @@ exports.getTopAttackedDestinations = async (req, res) => {
     ]);
 
     res.json(
-      data.map(d => ({
+      data.map((d) => ({
         destination: d._id,
-        attacks: d.count,
+        count: d.count, // ✅ frontend-safe
       }))
     );
   } catch (err) {

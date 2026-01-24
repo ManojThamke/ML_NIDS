@@ -25,7 +25,7 @@ function LogDetailsModal({ log, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative shadow-xl">
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl">
 
         {/* ❌ Close */}
         <button
@@ -36,90 +36,115 @@ function LogDetailsModal({ log, onClose }) {
         </button>
 
         {/* ===== HEADER ===== */}
-        <h2 className="text-xl font-bold mb-6">
-          Detection Log Details
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold tracking-wide">
+            Detection Log Details
+          </h2>
+          <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600">
+            Real-Time NIDS Event
+          </span>
+        </div>
 
-        {/* ===== SUMMARY ===== */}
+        {/* ===== SUMMARY CARDS ===== */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
 
-          <div>
-            <p className="text-gray-500">Timestamp</p>
-            <p className="font-mono">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide">
+              Timestamp
+            </p>
+            <p className="font-mono mt-1">
               {new Date(log.timestamp).toLocaleString()}
             </p>
           </div>
 
-          <div>
-            <p className="text-gray-500">Ensemble Confidence</p>
-            <div className="mt-1">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${confidenceBarClass(
-                    log.confidence || 0
-                  )}`}
-                  style={{ width: `${(log.confidence || 0) * 100}%` }}
-                />
-              </div>
-              <p className="text-xs font-semibold mt-1">
-                {((log.confidence || 0) * 100).toFixed(2)}%
-              </p>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+              Ensemble Confidence
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className={`h-3 rounded-full transition-all ${confidenceBarClass(
+                  log.confidence || 0
+                )}`}
+                style={{ width: `${(log.confidence || 0) * 100}%` }}
+              />
             </div>
+            <p className="text-sm font-semibold mt-1">
+              {((log.confidence || 0) * 100).toFixed(2)}%
+            </p>
           </div>
 
-          <div>
-            <p className="text-gray-500">Source IP</p>
-            <p className="font-mono">{log.sourceIP}</p>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide">
+              Source IP
+            </p>
+            <p className="font-mono mt-1">{log.sourceIP}</p>
           </div>
 
-          <div>
-            <p className="text-gray-500">Destination IP</p>
-            <p className="font-mono">{log.destinationIP}</p>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide">
+              Destination IP
+            </p>
+            <p className="font-mono mt-1">{log.destinationIP}</p>
           </div>
 
-          <div>
-            <p className="text-gray-500">Final Label</p>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+              Final Label
+            </p>
             <span
-              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${labelClass(
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${labelClass(
                 log.finalLabel
               )}`}
             >
-              {log.finalLabel}
+              {log.finalLabel === "ATTACK" ? "🚨" : "✅"} {log.finalLabel}
             </span>
           </div>
 
-          <div>
-            <p className="text-gray-500">Severity Level</p>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+              Severity Level
+            </p>
             <span
-              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${severityClass(
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${severityClass(
                 log.severity
               )}`}
             >
+              {log.severity === "HIGH"
+                ? "🔥"
+                : log.severity === "MEDIUM"
+                ? "⚠️"
+                : "🟢"}{" "}
               {log.severity}
             </span>
           </div>
 
-          <div>
-            <p className="text-gray-500">Hybrid Decision</p>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+              Hybrid Decision
+            </p>
             <span
-              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${labelClass(
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${labelClass(
                 log.hybridLabel
               )}`}
             >
-              {log.hybridLabel}
+              {log.hybridLabel === "ATTACK" ? "🚨" : "✅"} {log.hybridLabel}
             </span>
           </div>
 
-          <div>
-            <p className="text-gray-500">Aggregation Strategy</p>
-            <p className="font-medium">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wide">
+              Aggregation Strategy
+            </p>
+            <p className="font-medium mt-1">
               {log.aggregationMethod || "Ensemble Voting"}
             </p>
           </div>
+
         </div>
 
         {/* ===== PER-MODEL CONFIDENCE ===== */}
-        <div className="mb-8">
+        <div className="bg-gray-50 rounded-xl p-4 shadow-sm mb-8">
           <h3 className="font-semibold mb-3">
             Per-Model Confidence (Explainability)
           </h3>
@@ -136,19 +161,29 @@ function LogDetailsModal({ log, onClose }) {
           )}
         </div>
 
-        {/* ===== EXTRACTED FEATURES ===== */}
+        {/* ===== EXTRACTED FLOW FEATURES ===== */}
         <div>
           <h3 className="font-semibold mb-3">
             Extracted Flow Features
           </h3>
 
-          {!log.features || Object.keys(log.features).length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              Feature data not stored for this detection
-            </p>
+          {!log.flowFeatures || Object.keys(log.flowFeatures).length === 0 ? (
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-700">
+              <p className="font-medium mb-1">
+                Flow Features Not Persisted
+              </p>
+              <p className="text-gray-600">
+                Flow-level features were extracted in real time and used
+                internally by the machine learning models for detection.
+              </p>
+              <p className="italic text-gray-500 mt-1">
+                Feature values are not persisted to optimize real-time
+                performance and storage efficiency.
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              {Object.entries(log.features).map(([key, value]) => (
+              {Object.entries(log.flowFeatures).map(([key, value]) => (
                 <div
                   key={key}
                   className="flex justify-between bg-gray-50 px-3 py-2 rounded"

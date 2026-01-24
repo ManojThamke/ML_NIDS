@@ -1,4 +1,10 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 /* 🎨 ML-NIDS Theme Colors */
 const COLORS = {
@@ -6,19 +12,22 @@ const COLORS = {
   Attack: "#ef4444", // soft red
 };
 
-/* Clean tooltip */
+/* Clean dashboard tooltip */
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload || !payload.length) return null;
 
   const { name, value } = payload[0];
 
   return (
-    <div className="bg-white border rounded-lg px-4 py-2 shadow-lg">
-      <p className="text-sm font-semibold text-gray-700 mb-1">
+    <div className="bg-gray-900 text-white rounded-lg px-4 py-2 shadow-lg">
+      <p className="text-sm font-semibold mb-1">
         {name}
       </p>
-      <p className="text-sm text-gray-600">
-        Alerts: <span className="font-semibold">{value}</span>
+      <p className="text-sm text-gray-300">
+        Alerts:{" "}
+        <span className="font-semibold text-white">
+          {value}
+        </span>
       </p>
     </div>
   );
@@ -27,17 +36,21 @@ const CustomTooltip = ({ active, payload }) => {
 function DetectionDistributionDonut({ data }) {
   const attack = data?.attack ?? 0;
   const benign = data?.benign ?? 0;
-  const total = attack + benign || 1;
 
-  const attackPercent = ((attack / total) * 100).toFixed(1);
+  /* 🔧 ensure donut always renders */
+  const safeAttack = attack === 0 ? 0.0001 : attack;
+  const safeBenign = benign === 0 ? 0.0001 : benign;
+
+  const total = safeAttack + safeBenign;
+  const attackPercent = ((safeAttack / total) * 100).toFixed(1);
 
   const chartData = [
-    { name: "Benign", value: benign },
-    { name: "Attack", value: attack },
+    { name: "Benign", value: safeBenign },
+    { name: "Attack", value: safeAttack },
   ];
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
+    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col animate-fade-in">
       <h3 className="font-semibold mb-2 text-gray-700">
         Detection Distribution
       </h3>
@@ -56,6 +69,12 @@ function DetectionDistributionDonut({ data }) {
               paddingAngle={2}
               stroke="#f9fafb"
               strokeWidth={4}
+
+              /* 🔥 Smooth donut animation */
+              isAnimationActive={true}
+              animationBegin={300}
+              animationDuration={2600}
+              animationEasing="linear"
             >
               {chartData.map((entry) => (
                 <Cell

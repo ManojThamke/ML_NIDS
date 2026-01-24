@@ -9,10 +9,10 @@ import {
 } from "recharts";
 
 function AttackTimelineChart({ data }) {
-  // 🛡️ Hard guard
+  /* 🛡️ Hard guard */
   if (!Array.isArray(data) || data.length === 0) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border h-[380px] flex items-center justify-center">
+      <div className="bg-white rounded-xl p-6 shadow-sm border h-[380px] flex items-center justify-center animate-fade-in">
         <p className="text-sm text-gray-400">
           No attack activity detected in this period
         </p>
@@ -20,18 +20,20 @@ function AttackTimelineChart({ data }) {
     );
   }
 
-  // 🔧 Ensure baseline exists
+  /* 🔧 Ensure baseline exists for animation */
   const normalizedData =
     data.length === 1
       ? [{ ...data[0], attacks: 0 }, data[0]]
       : data;
 
-  // 🔧 Compute safe Y max
-  const maxAttacks = Math.max(...normalizedData.map((d) => d.attacks || 0));
+  /* 🔧 Compute safe Y max */
+  const maxAttacks = Math.max(
+    ...normalizedData.map((d) => d.attacks || 0)
+  );
   const yMax = Math.max(5, maxAttacks + 1);
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
+    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col animate-fade-in">
       <h3 className="font-semibold text-gray-700 mb-2">
         Attack Timeline
       </h3>
@@ -42,8 +44,15 @@ function AttackTimelineChart({ data }) {
           <AreaChart data={normalizedData}>
             <defs>
               {/* Smooth gradient fill */}
-              <linearGradient id="attackGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#fca5a5" stopOpacity={0.6} />
+              <linearGradient
+                id="attackGradient"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor="#fca5a5" stopOpacity={0.55} />
+                <stop offset="70%" stopColor="#fecaca" stopOpacity={0.25} />
                 <stop offset="100%" stopColor="#fee2e2" stopOpacity={0.08} />
               </linearGradient>
             </defs>
@@ -71,13 +80,13 @@ function AttackTimelineChart({ data }) {
               content={({ active, payload, label }) => {
                 if (!active || !payload || !payload.length) return null;
                 return (
-                  <div className="bg-white border rounded-lg px-4 py-2 shadow-lg">
-                    <p className="text-sm font-semibold text-gray-700 mb-1">
+                  <div className="bg-gray-900 text-white rounded-lg px-4 py-2 shadow-lg">
+                    <p className="text-sm font-semibold mb-1">
                       {label}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-300">
                       Attacks:{" "}
-                      <span className="font-semibold">
+                      <span className="font-semibold text-white">
                         {payload[0].value}
                       </span>
                     </p>
@@ -95,6 +104,12 @@ function AttackTimelineChart({ data }) {
               dot={{ r: 3, fill: "#ef4444" }}
               activeDot={{ r: 5 }}
               connectNulls
+
+              /* 🔥 Smooth, readable animation */
+              isAnimationActive={true}
+              animationBegin={300}
+              animationDuration={1800}
+              animationEasing="ease-in-out"
             />
           </AreaChart>
         </ResponsiveContainer>

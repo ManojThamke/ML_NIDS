@@ -11,8 +11,8 @@ import {
 } from "../../api";
 
 import DetectionDistributionDonut from "./DetectionDistributionDonut";
-import ProbabilityConfidenceBands from "./ProbabilityConfidenceBands";
-import PerModelAverageProbabilityChart from "./PerModelAverageProbability";
+import ProbabilityConfidenceBands from "./ConfidenceBandsChart";
+import PerModelAverageProbabilityChart from "./PerModelAverageConfidence";
 import ModelDominanceFrequencyChart from "./ModelDominanceFrequency";
 import ModelAgreementHeatmap from "./ModelAgreementHeatmap";
 import EnsembleVsBestModelChart from "./EnsembleVsBestModel";

@@ -10,31 +10,52 @@ import {
   LabelList,
 } from "recharts";
 
-/* 🎨 ML-NIDS unified model palette */
+/* 🎨 Soft professional palette */
 const MODEL_COLORS = {
-  rf: "#93c5fd",
-  lgb: "#fde68a",
-  xgb: "#a7f3d0",
-  svm: "#fca5a5",
-  knn: "#fbcfe8",
-  mlp: "#c4b5fd",
-  naive_bayes: "#fecaca",
+  RandomForest: "#60a5fa",
+  GradientBoosting: "#fde68a",
+  DecisionTree: "#e5e7eb",
+  KNN: "#fbcfe8",
+  LightGBM: "#c7d2fe",
+  MLP: "#ddd6fe",
+  XGBoost: "#a7f3d0",
+  NaiveBayes: "#fecaca",
+  LogisticRegression: "#d1d5db",
 };
 
-/* Wrapped X-axis labels */
+/* ✅ Professional display labels */
+const MODEL_LABELS = {
+  RandomForest: "Random Forest",
+  GradientBoosting: "Gradient Boosting",
+  DecisionTree: "Decision Tree",
+  LightGBM: "LightGBM",
+  XGBoost: "XGBoost",
+  KNN: "KNN",
+  MLP: "MLP",
+  NaiveBayes: "Naive Bayes",
+  LogisticRegression: "Logistic Regression",
+};
+
+/* ✅ Two-line X-axis labels (professional) */
 const CustomTick = ({ x, y, payload }) => {
-  const words = payload.value.split(" ");
+  const label = MODEL_LABELS[payload.value] || payload.value;
+  const parts = label.split(" ");
+
   return (
-    <g transform={`translate(${x},${y + 6})`}>
+    <g transform={`translate(${x},${y + 8})`}>
       <text
         textAnchor="middle"
         fill="#374151"
         fontSize={11}
         fontWeight={500}
       >
-        {words.map((word, i) => (
-          <tspan key={i} x={0} dy={i === 0 ? 0 : 12}>
-            {word}
+        {parts.map((part, index) => (
+          <tspan
+            key={index}
+            x="0"
+            dy={index === 0 ? 0 : 12}
+          >
+            {part}
           </tspan>
         ))}
       </text>
@@ -42,16 +63,16 @@ const CustomTick = ({ x, y, payload }) => {
   );
 };
 
-/* Clean tooltip (dashboard style) */
+/* Tooltip */
 const CustomTooltip = ({ active, payload }) => {
-  if (!active || !payload || !payload.length) return null;
+  if (!active || !payload?.length) return null;
 
   const { model, percent } = payload[0].payload;
 
   return (
     <div className="bg-white border rounded-lg px-4 py-2 shadow-lg">
       <p className="text-sm font-semibold text-gray-700 mb-1">
-        {model.toUpperCase()}
+        {MODEL_LABELS[model] || model}
       </p>
       <p className="text-sm text-gray-600">
         Dominance: <span className="font-semibold">{percent}%</span>
@@ -60,34 +81,36 @@ const CustomTooltip = ({ active, payload }) => {
   );
 };
 
-function ModelDominanceFrequency({ data }) {
-  if (!data || data.length === 0) {
+function ModelDominanceFrequencyChart({ data }) {
+  if (!Array.isArray(data) || data.length === 0) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border">
-        <p className="text-sm text-gray-500">
-          No dominance data available
+      <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex items-center justify-center">
+        <p className="text-sm text-gray-400">
+          No model dominance data available
         </p>
       </div>
     );
   }
 
-  /* 🔥 Find most dominant model */
+  /* 🔥 Identify most dominant model */
   const dominant = data.reduce((a, b) =>
     b.percent > a.percent ? b : a
   );
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
-      <h3 className="font-semibold mb-2 text-gray-700">
+      <h3 className="font-semibold mb-1 text-gray-700">
         Model Dominance Frequency
       </h3>
+      <p className="text-xs text-gray-500 mb-2">
+        How often each model was the most confident during detection
+      </p>
 
-      {/* 🔥 Fixed-height chart area */}
       <div className="h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
-            margin={{ top: 12, right: 20, left: 0, bottom: 6 }}
+            margin={{ top: 14, right: 20, left: 0, bottom: 10 }}
             barCategoryGap="30%"
           >
             <CartesianGrid
@@ -100,26 +123,42 @@ function ModelDominanceFrequency({ data }) {
               dataKey="model"
               tick={<CustomTick />}
               interval={0}
-              height={45}
-              tickMargin={6}
+              height={56}
             />
 
             <YAxis
               domain={[0, 100]}
               tickFormatter={(v) => `${v}%`}
+              tick={{ fontSize: 11, fill: "#6b7280" }}
               padding={{ top: 18 }}
             />
 
             <Tooltip content={<CustomTooltip />} />
 
-            <Bar dataKey="percent" radius={[8, 8, 0, 0]}>
-              {data.map((entry) => (
-                <Cell
-                  key={entry.model}
-                  fill={MODEL_COLORS[entry.model] || "#9ca3af"}
-                  opacity={entry.model === dominant.model ? 1 : 0.6}
-                />
-              ))}
+            <Bar
+              dataKey="percent"
+              radius={[10, 10, 0, 0]}
+              isAnimationActive
+              animationDuration={900}
+            >
+              {data.map((entry) => {
+                const isTop = entry.model === dominant.model;
+                return (
+                  <Cell
+                    key={entry.model}
+                    fill={MODEL_COLORS[entry.model] || "#9ca3af"}
+                    opacity={isTop ? 1 : 0.75}
+                    style={
+                      isTop
+                        ? {
+                            filter:
+                              "drop-shadow(0px 6px 10px rgba(0,0,0,0.12))",
+                          }
+                        : {}
+                    }
+                  />
+                );
+              })}
 
               <LabelList
                 dataKey="percent"
@@ -133,12 +172,11 @@ function ModelDominanceFrequency({ data }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation line */}
-      <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
-        Shows how often each model was the most confident during detection.
+      <p className="-mt-1 text-sm text-gray-600 text-center leading-snug">
+        Higher dominance indicates stronger influence on ensemble decisions.
       </p>
     </div>
   );
 }
 
-export default ModelDominanceFrequency;
+export default ModelDominanceFrequencyChart;
