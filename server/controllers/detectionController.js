@@ -43,17 +43,27 @@ exports.getDetectionTimeline = async (req, res) => {
     const { range = "24h" } = req.query;
 
     const now = Date.now();
-    const rangeMap = {
-  "1h": 1 * 60 * 60 * 1000,        // 1 hour
-  "2h": 2 * 60 * 60 * 1000,        // 2 hours
-  "24h": 24 * 60 * 60 * 1000,      // 24 hours
-  "7d": 7 * 24 * 60 * 60 * 1000,   // 7 days
-  "30d": 30 * 24 * 60 * 60 * 1000, // 30 days
-  "1y": 365 * 24 * 60 * 60 * 1000, // 1 year
-};
 
+    const rangeMap = {
+      "1h": 1 * 60 * 60 * 1000,
+      "2h": 2 * 60 * 60 * 1000,
+      "24h": 24 * 60 * 60 * 1000,
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
+    };
+
+    const bucketMap = {
+      "1h": 1 * 60 * 1000,      // 1 min
+      "2h": 2 * 60 * 1000,      // 2 min
+      "24h": 5 * 60 * 1000,     // 5 min
+      "7d": 60 * 60 * 1000,     // 1 hour
+      "30d": 6 * 60 * 60 * 1000,// 6 hours
+      "1y": 24 * 60 * 60 * 1000 // 1 day
+    };
 
     const windowMs = rangeMap[range] || rangeMap["24h"];
+    const bucketMs = bucketMap[range] || bucketMap["24h"];
 
     const data = await DetectionLog.aggregate([
       {
@@ -62,13 +72,20 @@ exports.getDetectionTimeline = async (req, res) => {
         },
       },
       {
-        $group: {
-          _id: {
-            $dateToString: {
-              format: "%Y-%m-%d %H:%M",
-              date: "$timestamp",
+        $project: {
+          bucket: {
+            $toDate: {
+              $subtract: [
+                { $toLong: "$timestamp" },
+                { $mod: [{ $toLong: "$timestamp" }, bucketMs] },
+              ],
             },
           },
+        },
+      },
+      {
+        $group: {
+          _id: "$bucket",
           count: { $sum: 1 },
         },
       },
@@ -76,8 +93,8 @@ exports.getDetectionTimeline = async (req, res) => {
     ]);
 
     res.json(
-      data.map((d) => ({
-        timestamp: d._id,
+      data.map(d => ({
+        timestamp: d._id, // REAL Date object
         count: d.count,
       }))
     );

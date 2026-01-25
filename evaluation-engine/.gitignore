@@ -1,0 +1,45 @@
+# ===============================
+# Python cache & bytecode
+# ===============================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ===============================
+# Virtual environment
+# (if venv is inside project)
+# ===============================
+venv/
+.env
+
+# ===============================
+# OS / Editor files
+# ===============================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ===============================
+# Logs & temporary files
+# ===============================
+*.log
+*.tmp
+
+# ===============================
+# Exported evaluation outputs
+# (generated files, not source)
+# ===============================
+export/evaluation_metrics.json
+
+# ===============================
+# Jupyter / experiments (if any)
+# ===============================
+.ipynb_checkpoints/
+
+# ===============================
+# Python build artifacts
+# ===============================
+build/
+dist/
+*.egg-info/
