@@ -1,9 +1,7 @@
 const DetectionLog = require("../models/DetectionLog");
-const { Parser } = require("json2csv");
 
 /* =====================================================
-   CREATE DETECTION (Python → Backend)
-   POST /api/detections
+   CREATE RAW DETECTION (OPTIONAL / LEGACY)
 ===================================================== */
 exports.createDetection = async (req, res) => {
   try {
@@ -15,13 +13,12 @@ exports.createDetection = async (req, res) => {
     await log.save();
     res.status(201).json({ message: "Detection saved" });
   } catch (err) {
-    console.error("❌ Detection save failed:", err.message);
     res.status(400).json({ error: err.message });
   }
 };
 
 /* =====================================================
-   RECENT DETECTIONS (Dashboard Table)
+   RECENT RAW DETECTIONS (OPTIONAL)
 ===================================================== */
 exports.getRecentDetections = async (req, res) => {
   try {
@@ -37,152 +34,44 @@ exports.getRecentDetections = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 /* =====================================================
-   GLOBAL DASHBOARD STATS (Cards)
+   DETECTION TIMELINE (RAW / LEGACY)
+   Used by charts calling /detections/timeline
 ===================================================== */
-exports.getStats = async (req, res) => {
+exports.getDetectionTimeline = async (req, res) => {
   try {
-    const [total, attack, benign, high] = await Promise.all([
-      DetectionLog.countDocuments(),
-      DetectionLog.countDocuments({ finalLabel: "ATTACK" }),
-      DetectionLog.countDocuments({ finalLabel: "BENIGN" }),
-      DetectionLog.countDocuments({ severity: "HIGH" }),
-    ]);
-
-    res.json({ total, attack, benign, high });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-/* =====================================================
-   LOGS API (FILTER + PAGINATION)
-===================================================== */
-exports.getLogs = async (req, res) => {
-  try {
-    let { page = 1, limit = 50, label, minConf, maxConf, search } = req.query;
-
-    page = Math.max(parseInt(page), 1);
-    limit = Math.min(parseInt(limit), 200);
-
-    const query = {};
-
-    if (label) query.finalLabel = label.toUpperCase();
-
-    if (minConf || maxConf) {
-      query.confidence = {};
-      if (minConf) query.confidence.$gte = Number(minConf);
-      if (maxConf) query.confidence.$lte = Number(maxConf);
-    }
-
-    if (search) {
-      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      query.$or = [
-        { sourceIP: { $regex: safe, $options: "i" } },
-        { destinationIP: { $regex: safe, $options: "i" } },
-      ];
-    }
-
-    const [logs, total] = await Promise.all([
-      DetectionLog.find(query)
-        .sort({ timestamp: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean(),
-      DetectionLog.countDocuments(query),
-    ]);
-
-    res.json({
-      logs,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-/* =====================================================
-   EXPORT LOGS (CSV / JSON)
-===================================================== */
-exports.exportLogs = async (req, res) => {
-  try {
-    const { format = "csv" } = req.query;
-
-    const logs = await DetectionLog.find()
-      .sort({ timestamp: -1 })
-      .lean();
-
-    if (format === "json") {
-      res.setHeader("Content-Type", "application/json");
-      res.setHeader(
-        "Content-Disposition",
-        "attachment; filename=detections.json"
-      );
-      return res.send(logs);
-    }
-
-    const fields = [
-      "timestamp",
-      "sourceIP",
-      "destinationIP",
-      "dstPort",
-      "protocol",
-      "finalLabel",
-      "hybridLabel",
-      "severity",
-      "confidence",
-      "attackVotes",
-      "flowDuration",
-    ];
-
-    const csv = new Parser({ fields }).parse(logs);
-
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=detections.csv"
-    );
-    res.send(csv);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-/* =====================================================
-   TRAFFIC TIMELINE (Charts)
-===================================================== */
-exports.getTrafficTimeline = async (req, res) => {
-  try {
-    const { range = "1h" } = req.query;
+    const { range = "24h" } = req.query;
 
     const now = Date.now();
-    const config = {
-      "1h": { ms: 3600000, bucket: 60000 },
-      "24h": { ms: 86400000, bucket: 300000 },
-      "7d": { ms: 604800000, bucket: 3600000 },
-    };
+    const rangeMap = {
+  "1h": 1 * 60 * 60 * 1000,        // 1 hour
+  "2h": 2 * 60 * 60 * 1000,        // 2 hours
+  "24h": 24 * 60 * 60 * 1000,      // 24 hours
+  "7d": 7 * 24 * 60 * 60 * 1000,   // 7 days
+  "30d": 30 * 24 * 60 * 60 * 1000, // 30 days
+  "1y": 365 * 24 * 60 * 60 * 1000, // 1 year
+};
 
-    const cfg = config[range] || config["24h"];
+
+    const windowMs = rangeMap[range] || rangeMap["24h"];
 
     const data = await DetectionLog.aggregate([
-      { $match: { timestamp: { $gte: new Date(now - cfg.ms) } } },
       {
-        $project: {
-          bucket: {
-            $toDate: {
-              $subtract: [
-                { $toLong: "$timestamp" },
-                { $mod: [{ $toLong: "$timestamp" }, cfg.bucket] },
-              ],
-            },
-          },
+        $match: {
+          timestamp: { $gte: new Date(now - windowMs) },
         },
       },
-      { $group: { _id: "$bucket", count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d %H:%M",
+              date: "$timestamp",
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
       { $sort: { _id: 1 } },
     ]);
 
@@ -193,6 +82,7 @@ exports.getTrafficTimeline = async (req, res) => {
       }))
     );
   } catch (err) {
+    console.error("Detection timeline error:", err);
     res.status(500).json({ error: err.message });
   }
 };

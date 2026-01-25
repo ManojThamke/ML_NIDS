@@ -3,13 +3,14 @@ const cors = require("cors");
 require("dotenv").config();
 
 const connectDB = require("./config/db");
+
 const alertRoutes = require("./routes/alertRoutes");
 const monitorRoutes = require("./routes/monitorRoutes");
-const modelRoutes = require("./routes/modelRoutes")
+const modelRoutes = require("./routes/modelRoutes");
 const statsRoutes = require("./routes/statsRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const systemRoutes = require("./routes/systemRoutes");
-const detectionRoutes = require("./routes/detectionroutes");
+const detectionRoutes = require("./routes/detectionRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -28,13 +29,13 @@ app.use(express.json());
 /* =======================
    Routes
 ======================= */
-app.use("/api/alerts", alertRoutes);   // Alerts API
-app.use("/api/monitor", monitorRoutes); // Start/Stop monitoring
-app.use("/api/models", require("./routes/modelRoutes"));  //models comparison
-app.use("/api/stats", require("./routes/statsRoutes")); // Stats API
+app.use("/api/alerts", alertRoutes);
+app.use("/api/monitor", monitorRoutes);
+app.use("/api/models", modelRoutes);
+app.use("/api/stats", statsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/system", systemRoutes);
-app.use("/api/detections", detectionRoutes); // Detection Logs
+app.use("/api/detections", detectionRoutes);
 
 /* =======================
    Health Check

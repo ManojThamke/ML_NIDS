@@ -9,7 +9,7 @@ import {
   Cell,
 } from "recharts";
 import { useEffect, useState } from "react";
-import { getTopDestinations } from "../../api";
+import { getAlertTopDestinations } from "../../api";
 
 /* 🎨 Soft attack-themed pastel colors */
 const COLORS = [
@@ -42,7 +42,7 @@ function TopAttackedDestinationsChart() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    getTopDestinations()
+    getAlertTopDestinations()
       .then((res) => setData(res.data))
       .catch(console.error);
   }, []);

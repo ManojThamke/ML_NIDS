@@ -8,36 +8,19 @@ const {
   getLogs,
   exportLogs,
   getLogsInsights,
-  getTrafficTimeline,
-  getTopAttackedDestinations,
+  getAlertTimeline,
+  getAlertTopDestinations,
 } = require("../controllers/alertController");
 
-/* =====================================================
-   ALERT INGESTION (Python → Backend)
-===================================================== */
 router.post("/", createAlert);
-
-/* =====================================================
-   DASHBOARD
-===================================================== */
 router.get("/", getAlerts);
 router.get("/stats", getAlertStats);
 
-/* =====================================================
-   LOGS (TABLE + SEARCH + PAGINATION)
-===================================================== */
 router.get("/logs", getLogs);
-
-/* =====================================================
-   EXPORT
-===================================================== */
 router.get("/export", exportLogs);
 
-/* =====================================================
-   LOG ANALYTICS
-===================================================== */
 router.get("/logs/insights", getLogsInsights);
-router.get("/logs/timeline", getTrafficTimeline);
-router.get("/logs/top-destinations", getTopAttackedDestinations);
+router.get("/logs/timeline", getAlertTimeline);
+router.get("/logs/top-destinations", getAlertTopDestinations);
 
 module.exports = router;

@@ -8,7 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { getLogs } from "../../api";
+import { getAlertLogs } from "../../api";
 
 function AttackConfidenceArea() {
   const [data, setData] = useState([]);
@@ -19,7 +19,7 @@ function AttackConfidenceArea() {
 
     const fetchData = async () => {
       try {
-        const res = await getLogs({ page: 1, limit: 20 });
+        const res = await getAlertLogs({ page: 1, limit: 20 });
         if (!mounted) return;
 
         const formatted = res.data.logs

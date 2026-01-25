@@ -4,30 +4,42 @@ const API = axios.create({
   baseURL: "http://localhost:5000/api",
 });
 
-/* ================= ALERTS & LOGS ================= */
+/* =====================================================
+   ALERTS (PRIMARY PIPELINE OUTPUT)
+===================================================== */
 
+/* Latest alerts (dashboard table) */
 export const getAlerts = () => API.get("/alerts");
+
+/* Alert summary cards */
 export const getAlertStats = () => API.get("/alerts/stats");
 
-export const getLogs = (params) =>
+/* Alert logs (filter + pagination) */
+export const getAlertLogs = (params) =>
   API.get("/alerts/logs", { params });
 
-export const exportLogs = (params) =>
+/* Export alerts */
+export const exportAlertLogs = (params) =>
   API.get("/alerts/export", {
     params,
     responseType: "blob",
   });
 
-export const getLogsInsights = () =>
+/* ALERTS */
+export const getAlertInsights = () =>
   API.get("/alerts/logs/insights");
 
-export const getTrafficTimeline = (range = "24h") =>
+export const getAlertTimeline = (range = "24h") =>
   API.get(`/alerts/logs/timeline?range=${range}`);
 
-export const getTopDestinations = () =>
-  API.get("/alerts/logs/top-destinations");
+export const getAlertTopDestinations = (limit = 5) =>
+  API.get(`/alerts/logs/top-destinations?limit=${limit}`);
 
-/* ================= MONITORING ================= */
+
+
+/* =====================================================
+   MONITORING (REAL-TIME ENGINE CONTROL)
+===================================================== */
 
 export const startMonitoring = () =>
   API.post("/monitor/start");
@@ -38,7 +50,10 @@ export const stopMonitoring = () =>
 export const getMonitoringStatus = () =>
   API.get("/monitor/status");
 
-/* ================= MODELS (EVALUATION ENGINE) ================= */
+
+/* =====================================================
+   MODELS (EVALUATION ENGINE – UPCOMING)
+===================================================== */
 
 export const getModelMetrics = () =>
   API.get("/models/metrics");
@@ -46,13 +61,16 @@ export const getModelMetrics = () =>
 export const getModelSummary = () =>
   API.get("/models/summary");
 
-/* ================= STATS (OPERATIONAL ANALYTICS) ================= */
+
+/* =====================================================
+   STATS (ANALYTICS, NOT RAW LOGS)
+===================================================== */
 
 /* Distribution */
 export const getDetectionDistribution = () =>
   API.get("/stats/distribution");
 
-/* Confidence analytics (NOT evaluation) */
+/* Confidence analytics */
 export const getConfidenceBands = () =>
   API.get("/stats/confidence/bands");
 
@@ -62,7 +80,7 @@ export const getPerModelAverageConfidence = () =>
 export const getEnsembleVsBestModel = () =>
   API.get("/stats/confidence/ensemble-vs-best");
 
-/* Model behavior analytics */
+/* Model behavior */
 export const getModelDominanceFrequency = () =>
   API.get("/stats/models/dominance");
 
@@ -76,7 +94,10 @@ export const getAttackTimeline = (range = "1h") =>
 export const getTopAttackedDestinations = (limit = 5) =>
   API.get(`/stats/attacks/top-destinations?limit=${limit}`);
 
-/* ================= DETECTIONS (OPTIONAL / LEGACY) ================= */
+
+/* =====================================================
+   DETECTIONS (LEGACY / RAW PYTHON OUTPUT)
+===================================================== */
 
 export const getRecentDetections = (limit = 10) =>
   API.get(`/detections/recent?limit=${limit}`);
@@ -96,7 +117,10 @@ export const exportDetectionLogs = (params) =>
 export const getDetectionTimeline = (range = "24h") =>
   API.get(`/detections/timeline?range=${range}`);
 
-/* ================= SETTINGS (PHASE-1) ================= */
+
+/* =====================================================
+   SETTINGS
+===================================================== */
 
 export const getSettings = () =>
   API.get("/settings");
@@ -104,7 +128,11 @@ export const getSettings = () =>
 export const saveSettings = (data) =>
   API.post("/settings", data);
 
-/* ================= SYSTEM ================= */
+
+/* =====================================================
+   SYSTEM
+===================================================== */
 
 export const getSystemInterface = () =>
   API.get("/system/interface");
+

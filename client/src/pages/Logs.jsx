@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
-import { getLogs, exportLogs } from "../api";
+import { getAlertLogs, exportAlertLogs } from "../api";
 
-import TrafficTimelineChart from "../components/charts/TrafficTimelineChart";
-import TopAttackedDestinationsChart from "../components/charts/TopAttackedDestinationsChart";
+
 import ExportLogsModal from "../components/ExportLogsModal";
 import LogsInsights from "../components/LogsInsights";
 import LogDetailsModal from "../components/LogDetailsModal";
@@ -50,7 +49,7 @@ function Logs() {
     try {
       logs.length === 0 ? setLoading(true) : setRefreshing(true);
 
-      const res = await getLogs({
+      const res = await getAlertLogs({
         page,
         limit: 50,
         label,
@@ -82,7 +81,7 @@ function Logs() {
 
   /* ================= EXPORT ================= */
   const handleExport = async (format, options) => {
-    const res = await exportLogs({
+    const res = await exportAlertLogs({
       format,
       range: options.range,
       onlyAttack: options.onlyAttack,

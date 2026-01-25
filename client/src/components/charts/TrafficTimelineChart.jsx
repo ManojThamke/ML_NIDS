@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from "recharts";
 import { useEffect, useState, useCallback } from "react";
-import { getTrafficTimeline } from "../../api";
+import { getDetectionTimeline } from "../../api";
 
 const ranges = [
   { label: "1H", value: "1h" },
@@ -45,7 +45,7 @@ function TrafficTimelineChart() {
   const fetchTimeline = useCallback(async () => {
     try {
       setRefreshing(true);
-      const res = await getTrafficTimeline(range);
+      const res = await getDetectionTimeline(range);
       setData(res.data);
     } catch (err) {
       console.error("Timeline fetch failed:", err);

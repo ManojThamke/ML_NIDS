@@ -3,12 +3,13 @@ const { Parser } = require("json2csv");
 
 /* =====================================================
    CREATE ALERT (Python → Backend)
+   POST /api/alerts
 ===================================================== */
 exports.createAlert = async (req, res) => {
   try {
     const body = { ...req.body };
 
-    // per_model may arrive as string or object
+    // per_model safety
     if (body.per_model) {
       body.modelProbabilities =
         typeof body.per_model === "string"
@@ -33,7 +34,8 @@ exports.createAlert = async (req, res) => {
 };
 
 /* =====================================================
-   DASHBOARD TABLE (LATEST)
+   DASHBOARD TABLE (LATEST ALERTS)
+   GET /api/alerts
 ===================================================== */
 exports.getAlerts = async (req, res) => {
   try {
@@ -49,7 +51,8 @@ exports.getAlerts = async (req, res) => {
 };
 
 /* =====================================================
-   DASHBOARD STATS
+   ALERT STATS (CARDS)
+   GET /api/alerts/stats
 ===================================================== */
 exports.getAlertStats = async (req, res) => {
   try {
@@ -72,7 +75,8 @@ exports.getAlertStats = async (req, res) => {
 };
 
 /* =====================================================
-   LOGS (FILTER + SEARCH + PAGINATION)
+   LOGS TABLE (FILTER + SEARCH + PAGINATION)
+   GET /api/alerts/logs
 ===================================================== */
 exports.getLogs = async (req, res) => {
   try {
@@ -121,7 +125,8 @@ exports.getLogs = async (req, res) => {
 };
 
 /* =====================================================
-   EXPORT LOGS (CSV / JSON)
+   EXPORT ALERT LOGS
+   GET /api/alerts/export
 ===================================================== */
 exports.exportLogs = async (req, res) => {
   try {
@@ -150,7 +155,7 @@ exports.exportLogs = async (req, res) => {
       query.finalLabel = "ATTACK";
     }
 
-    const logs = await Alert.find(query).sort({ createdAt: -1 }).lean();
+    const logs = await Alert.find(query).lean();
 
     const rows = logs.map((log) => {
       const row = {
@@ -177,9 +182,11 @@ exports.exportLogs = async (req, res) => {
       }
 
       if (includeModelProb === "true" && log.modelProbabilities) {
-        Object.entries(log.modelProbabilities).forEach(([model, prob]) => {
-          row[`prob_${model}`] = +(prob * 100).toFixed(2);
-        });
+        Object.entries(log.modelProbabilities).forEach(
+          ([model, prob]) => {
+            row[`prob_${model}`] = +(prob * 100).toFixed(2);
+          }
+        );
       }
 
       return row;
@@ -188,18 +195,17 @@ exports.exportLogs = async (req, res) => {
     if (format === "json") {
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=detection_logs_${range}.json`
+        `attachment; filename=alerts_${range}.json`
       );
       return res.json(rows);
     }
 
-    const parser = new Parser();
-    const csv = parser.parse(rows);
+    const csv = new Parser().parse(rows);
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=detection_logs_${range}.csv`
+      `attachment; filename=alerts_${range}.csv`
     );
     res.send(csv);
   } catch (err) {
@@ -207,9 +213,9 @@ exports.exportLogs = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 /* =====================================================
-   GLOBAL LOG INSIGHTS
+   ALERT LOG INSIGHTS (CARDS)
+   GET /api/alerts/logs/insights
 ===================================================== */
 exports.getLogsInsights = async (req, res) => {
   try {
@@ -246,56 +252,28 @@ exports.getLogsInsights = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 /* =====================================================
-   TOP ATTACKED DESTINATIONS
+   ALERT TRAFFIC TIMELINE
+   GET /api/alerts/logs/timeline
 ===================================================== */
-exports.getTopAttackedDestinations = async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit || 5);
-
-    const data = await Alert.aggregate([
-      { $match: { finalLabel: "ATTACK" } },
-      { $group: { _id: "$destinationIP", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: limit },
-    ]);
-
-    res.json(
-      data.map((d) => ({
-        destination: d._id,
-        count: d.count,
-      }))
-    );
-  } catch (err) {
-    console.error("Top attacked destinations error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-/* =====================================================
-   TRAFFIC TIMELINE (LOG VOLUME OVER TIME)
-===================================================== */
-exports.getTrafficTimeline = async (req, res) => {
+exports.getAlertTimeline = async (req, res) => {
   try {
     const { range = "24h" } = req.query;
 
-    const now = Date.now();
     const rangeMap = {
-      "1h": 60 * 60 * 1000,
+      "1h": 1 * 60 * 60 * 1000,
       "2h": 2 * 60 * 60 * 1000,
       "24h": 24 * 60 * 60 * 1000,
       "7d": 7 * 24 * 60 * 60 * 1000,
       "30d": 30 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
     };
 
     const windowMs = rangeMap[range] || rangeMap["24h"];
+    const now = Date.now();
 
     const data = await Alert.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: new Date(now - windowMs) },
-        },
-      },
+      { $match: { createdAt: { $gte: new Date(now - windowMs) } } },
       {
         $group: {
           _id: {
@@ -311,13 +289,33 @@ exports.getTrafficTimeline = async (req, res) => {
     ]);
 
     res.json(
-      data.map((d) => ({
+      data.map(d => ({
         timestamp: d._id,
         count: d.count,
       }))
     );
   } catch (err) {
-    console.error("Traffic timeline error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+exports.getAlertTopDestinations = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || 5);
+
+    const data = await Alert.aggregate([
+      { $match: { finalLabel: "ATTACK" } },
+      { $group: { _id: "$destinationIP", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: limit },
+    ]);
+
+    res.json(
+      data.map(d => ({
+        destination: d._id,
+        count: d.count,
+      }))
+    );
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };

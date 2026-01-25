@@ -2,22 +2,11 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/detectionController");
 
-/* =====================================================
-   PYTHON → BACKEND
-===================================================== */
+/* PYTHON → BACKEND (RAW / LEGACY) */
 router.post("/", controller.createDetection);
 
-/* =====================================================
-   DASHBOARD
-===================================================== */
+/* DASHBOARD (OPTIONAL) */
 router.get("/recent", controller.getRecentDetections);
-router.get("/stats", controller.getStats);
-
-/* =====================================================
-   LOGS & ANALYTICS
-===================================================== */
-router.get("/logs", controller.getLogs);
-router.get("/export", controller.exportLogs);
-router.get("/timeline", controller.getTrafficTimeline);
+router.get("/timeline", controller.getDetectionTimeline);
 
 module.exports = router;

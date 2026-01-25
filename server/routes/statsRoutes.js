@@ -12,35 +12,19 @@ const {
   getTopAttackedDestinations,
 } = require("../controllers/statsController");
 
-/**
- * =====================================
- * TRAFFIC / LABEL DISTRIBUTION
- * =====================================
- */
+/* DISTRIBUTION */
 router.get("/distribution", getDetectionDistribution);
 
-/**
- * =====================================
- * CONFIDENCE ANALYTICS (NOT EVALUATION)
- * =====================================
- */
+/* CONFIDENCE */
 router.get("/confidence/bands", getConfidenceBands);
 router.get("/confidence/per-model", getPerModelAverageConfidence);
 router.get("/confidence/ensemble-vs-best", getEnsembleVsBestModel);
 
-/**
- * =====================================
- * MODEL BEHAVIOR ANALYTICS
- * =====================================
- */
+/* MODEL BEHAVIOR */
 router.get("/models/dominance", getModelDominanceFrequency);
 router.get("/models/agreement", getModelAgreementMatrix);
 
-/**
- * =====================================
- * ATTACK INTELLIGENCE
- * =====================================
- */
+/* ATTACK INTELLIGENCE */
 router.get("/attacks/timeline", getAttackTimeline);
 router.get("/attacks/top-destinations", getTopAttackedDestinations);
 
