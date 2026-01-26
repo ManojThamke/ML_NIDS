@@ -23,6 +23,7 @@ const DEFAULT_MODELS = [
 const DEFAULT_THRESHOLD = 0.5;
 const DEFAULT_VOTE_K = 3;
 const DEFAULT_FLOW_TIMEOUT = 10;
+const DEFAULT_PROTOCOL = "both";
 
 function Settings() {
   /* ================= STATE ================= */
@@ -32,6 +33,7 @@ function Settings() {
   const [voteK, setVoteK] = useState(DEFAULT_VOTE_K);
   const [flowTimeout, setFlowTimeout] = useState(DEFAULT_FLOW_TIMEOUT);
   const [iface, setIface] = useState("");
+  const [protocol, setProtocol] = useState(DEFAULT_PROTOCOL);
 
   const [monitoring, setMonitoring] = useState(false);
   const [status, setStatus] = useState(null);
@@ -64,6 +66,7 @@ function Settings() {
         setVoteK(res.data.voteK ?? DEFAULT_VOTE_K);
         setFlowTimeout(res.data.flowTimeout ?? DEFAULT_FLOW_TIMEOUT);
         setIface(res.data.interface ?? "");
+        setProtocol(res.data.protocol ?? DEFAULT_PROTOCOL);
       } catch {
         console.warn("Using default Phase-2 settings");
       }
@@ -93,7 +96,6 @@ function Settings() {
 
   const toggleModel = (model) => {
     setModels((prev) => {
-      // 🔒 Enforce at least one model
       if (prev.length === 1 && prev.includes(model)) {
         setStatus("⚠️ At least one model must be selected");
         return prev;
@@ -103,7 +105,6 @@ function Settings() {
         ? prev.filter((m) => m !== model)
         : [...prev, model];
 
-      // Adjust voteK if needed
       if (voteK > updated.length) {
         setVoteK(updated.length);
       }
@@ -119,6 +120,7 @@ function Settings() {
     setThreshold(DEFAULT_THRESHOLD);
     setVoteK(DEFAULT_VOTE_K);
     setFlowTimeout(DEFAULT_FLOW_TIMEOUT);
+    setProtocol(DEFAULT_PROTOCOL);
     setIface("");
     setStatus("🔄 Settings reset to Phase-2 defaults");
   };
@@ -149,6 +151,7 @@ function Settings() {
         voteK,
         flowTimeout,
         interface: iface,
+        protocol,
       });
 
       setStatus("✅ Settings saved successfully");
@@ -164,6 +167,7 @@ function Settings() {
   const pythonCommand = `
 python detector_live_capture_v2.py \\
 --iface "${iface || "<auto-detect>"}" \\
+--protocol ${protocol} \\
 --models ${models.join(",")} \\
 --threshold ${threshold} \\
 --vote ${voteK} \\
@@ -264,6 +268,31 @@ python detector_live_capture_v2.py \\
             className="w-full border rounded px-3 py-2 text-sm"
           />
         </div>
+      </div>
+
+      {/* ================= PROTOCOL ================= */}
+      <div className="bg-white rounded-xl p-6 shadow border">
+        <label className="text-sm font-medium block mb-1">
+          Protocol Monitoring Mode
+        </label>
+
+        <select
+          value={protocol}
+          disabled={monitoring}
+          onChange={(e) => setProtocol(e.target.value)}
+          className="w-full border rounded px-3 py-2 text-sm"
+        >
+          <option value="both">TCP + UDP (Recommended)</option>
+          <option value="tcp">TCP Only</option>
+          <option value="udp">UDP Only</option>
+
+
+
+        </select>
+
+        <p className="text-xs text-gray-500 mt-1">
+          Select which network protocols should be monitored by the detection engine
+        </p>
       </div>
 
       {/* ================= NETWORK ================= */}

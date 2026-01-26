@@ -61,6 +61,12 @@ const SettingsSchema = new mongoose.Schema(
       type: String,
       required: true, // mandatory for Windows / hotspot
     },
+    
+    protocol: {
+      type: String,
+      enum: ["tcp", "udp", "both"],
+      default: "both",
+    },
   },
   {
     timestamps: true, // createdAt, updatedAt

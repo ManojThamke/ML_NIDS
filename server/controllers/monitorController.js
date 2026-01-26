@@ -55,26 +55,25 @@ const startMonitoring = async (req, res) => {
     const args = [
       detectorPath,
 
-      // 🔴 REQUIRED on Windows / hotspot
       "--iface",
       settings.interface,
 
-      // Models
+      // 🔥 NEW: protocol selection
+      "--protocol",
+      settings.protocol ?? "both",
+
       "--models",
       settings.models?.length ? settings.models.join(",") : "all",
 
-      // Voting logic
       "--threshold",
       String(settings.threshold ?? 0.5),
 
       "--vote",
       String(settings.voteK ?? 3),
 
-      // Flow expiry
       "--timeout",
       String(settings.flowTimeout ?? 10),
 
-      // 🔑 IMPORTANT
       "--run_mode",
       "service"
     ];

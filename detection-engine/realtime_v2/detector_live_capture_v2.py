@@ -9,7 +9,6 @@ import pandas as pd
 import argparse
 import signal
 import sys
-from datetime import datetime
 import os
 import requests
 from datetime import datetime, timezone
@@ -56,6 +55,14 @@ parser.add_argument("--threshold", type=float, default=0.5)
 parser.add_argument("--vote", type=int, default=3)
 parser.add_argument("--timeout", type=int, default=10)
 
+# 🔥 NEW: protocol selection (like v1)
+parser.add_argument(
+    "--protocol",
+    choices=["tcp", "udp", "both"],
+    default="both",
+    help="Protocol to monitor (tcp | udp | both)"
+)
+
 parser.add_argument(
     "--run_mode",
     choices=["cli", "service"],
@@ -70,6 +77,7 @@ GLOBAL_THRESHOLD = args.threshold
 VOTE_K = args.vote
 FLOW_TIMEOUT = args.timeout
 RUN_MODE = args.run_mode
+PROTOCOL_MODE = args.protocol
 
 SELECTED_MODELS = None if args.models.lower() == "all" else [
     m.strip() for m in args.models.split(",")
@@ -111,6 +119,17 @@ def get_flow_key(pkt):
 def is_forward(flow_key, pkt):
     _, _, sport, _, proto = flow_key
     return pkt[TCP].sport == sport if proto == "TCP" else pkt[UDP].sport == sport
+
+# ===============================
+# PROTOCOL FILTER (NEW)
+# ===============================
+
+def build_bpf_filter(protocol_mode: str):
+    if protocol_mode == "tcp":
+        return "tcp"
+    elif protocol_mode == "udp":
+        return "udp"
+    return "tcp or udp"
 
 # ===============================
 # FLOW FINALIZATION
@@ -164,7 +183,6 @@ def process_flow(flow_key, flow):
         "modelProbabilities": per_model_probs
     }
 
-
     payload = apply_hybrid_logic(payload)
 
     trigger_alert(payload)
@@ -189,6 +207,12 @@ def process_flow(flow_key, flow):
 
 def on_packet(pkt):
     if not RUNNING or IP not in pkt:
+        return
+
+    # 🔒 Protocol safety check
+    if PROTOCOL_MODE == "tcp" and TCP not in pkt:
+        return
+    if PROTOCOL_MODE == "udp" and UDP not in pkt:
         return
 
     flow_key = get_flow_key(pkt)
@@ -232,14 +256,17 @@ if __name__ == "__main__":
     if RUN_MODE == "cli":
         print("[INFO] Starting Realtime V2 Detector")
         print(
-            f"Iface={INTERFACE} | Models={args.models} | "
+            f"Iface={INTERFACE} | Protocol={PROTOCOL_MODE} | Models={args.models} | "
             f"Threshold={GLOBAL_THRESHOLD} | VoteK={VOTE_K} | "
             f"Timeout={FLOW_TIMEOUT}s | Mode={RUN_MODE}"
         )
         print("-" * 60)
 
+    BPF_FILTER = build_bpf_filter(PROTOCOL_MODE)
+
     sniff(
         iface=INTERFACE,
+        filter=BPF_FILTER,
         prn=on_packet,
         store=False
     )

@@ -20,7 +20,7 @@ function AttackBenignDonut({ stats }) {
   return (
     <div
       className="
-        bg-white rounded-xl p-6 shadow-sm border h-[340px]
+        bg-white rounded-xl p-5 shadow-sm border h-[340px]
         animate-fade-in
       "
     >
