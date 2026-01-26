@@ -27,7 +27,7 @@ function GlobalSecurityOverview() {
   const [agreement, setAgreement] = useState({ models: [], matrix: {} });
   const [ensembleCompare, setEnsembleCompare] = useState([]);
   const [timeline, setTimeline] = useState([]);
-  const [topDestinations, setTopDestinations] =useState([]);
+  const [topDestinations, setTopDestinations] = useState([]);
 
   useEffect(() => {
     getDetectionDistribution()
@@ -97,10 +97,11 @@ function GlobalSecurityOverview() {
         </div>
 
         {/* Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
           <ModelAgreementHeatmap data={agreement} />
           <EnsembleVsBestModelChart data={ensembleCompare} />
         </div>
+
       </div>
 
       {/* =======================
@@ -108,7 +109,7 @@ function GlobalSecurityOverview() {
       ======================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AttackTimelineChart data={timeline} />
-        <TopAttackedDestinationsChart data={topDestinations}/>
+        <TopAttackedDestinationsChart data={topDestinations} />
       </div>
 
     </div>

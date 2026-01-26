@@ -239,37 +239,39 @@ exports.getAttackTimeline = async (req, res) => {
     const timeline = await Alert.aggregate([
       {
         $match: {
-          finalLabel: "ATTACK",
+          hybridLabel: { $in: ["ATTACK", "SUSPICIOUS"] },
+          severity: { $in: ["MEDIUM", "HIGH"] },
           createdAt: { $gte: startTime },
         },
       },
-      {
-        $group: {
-          _id: {
-            time: {
-              $dateToString: {
-                format: "%Y-%m-%d %H:%M",
-                date: "$createdAt",
+  {
+    $group: {
+      _id: {
+        time: {
+          $dateToString: {
+            format: "%Y-%m-%d %H:%M",
+              date: "$createdAt",
               },
-            },
-          },
-          count: { $sum: 1 },
-          avgConfidence: { $avg: "$confidence" },
         },
       },
-      { $sort: { "_id.time": 1 } },
+      count: { $sum: 1 },
+      avgConfidence: { $avg: "$confidence" },
+    },
+  },
+  { $sort: { "_id.time": 1 } },
     ]);
 
-    res.json(
-      timeline.map((t) => ({
-        timestamp: t._id.time,
-        count: t.count,
-        avgConfidence: +(t.avgConfidence * 100).toFixed(2),
-      }))
-    );
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.json(
+    timeline.map((t) => ({
+      time: t._id.time,          // ✅ match XAxis
+      attacks: t.count,          // ✅ match AreaChart
+      avgConfidence: +(t.avgConfidence * 100).toFixed(2),
+    }))
+  );
+
+} catch (err) {
+  res.status(500).json({ error: err.message });
+}
 };
 
 /**

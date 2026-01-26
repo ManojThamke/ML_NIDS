@@ -88,7 +88,7 @@ export const getModelAgreementMatrix = () =>
   API.get("/stats/models/agreement");
 
 /* Attack intelligence */
-export const getAttackTimeline = (range = "1h") =>
+export const getAttackTimeline = (range = "24h") =>
   API.get(`/stats/attacks/timeline?range=${range}`);
 
 export const getTopAttackedDestinations = (limit = 5) =>
