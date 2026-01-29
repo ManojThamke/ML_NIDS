@@ -1,238 +1,178 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import PerModelConfidenceChart from "./charts/PerModelConfidenceChart";
+import { X, ShieldAlert, Activity, Cpu, Database, Clock, Server } from "lucide-react";
 
-/* ================= COLOR + ICON HELPERS ================= */
+/* ================= THEME-BASED HELPERS ================= */
 
 const labelClass = (label) => {
-  if (label === "ATTACK") return "bg-red-100 text-red-700";
-  if (label === "SUSPICIOUS") return "bg-yellow-100 text-yellow-800";
-  return "bg-green-100 text-green-700";
-};
-
-const labelEmoji = (label) => {
-  if (label === "ATTACK") return "🚨";
-  if (label === "SUSPICIOUS") return "⚠️";
-  return "✅";
+  if (label === "ATTACK") return "bg-rose-500/10 text-rose-500 border-rose-500/20";
+  if (label === "SUSPICIOUS") return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+  return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
 };
 
 const severityClass = (severity) => {
-  if (severity === "HIGH") return "bg-red-600 text-white";
-  if (severity === "MEDIUM") return "bg-yellow-400 text-black";
-  return "bg-green-200 text-green-800";
+  if (severity === "HIGH") return "bg-rose-600 text-white shadow-lg shadow-rose-900/20";
+  if (severity === "MEDIUM") return "bg-amber-400 text-black";
+  return "bg-emerald-500 text-white";
 };
 
 const confidenceBarClass = (confidence) => {
-  if (confidence >= 0.7) return "bg-red-500";
-  if (confidence >= 0.5) return "bg-yellow-400";
-  return "bg-green-500";
+  if (confidence >= 0.7) return "bg-rose-500";
+  if (confidence >= 0.4) return "bg-amber-400";
+  return "bg-emerald-500";
 };
 
-function LogDetailsModal({ log, onClose }) {
+function LogDetailsModal({ log, onClose, theme = 'light' }) {
   
-  /* ===== ESC KEY CLOSE ===== */
   useEffect(() => {
-    if (!log) return null;
+    if (!log) return;
     const handleEsc = (e) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
+  }, [log, onClose]);
+
+  if (!log) return null;
+
+  const themeStyles = {
+    light: {
+      modal: "bg-white border-slate-200",
+      card: "bg-slate-50 border-slate-100",
+      innerCard: "bg-white border-slate-100",
+      textMain: "text-slate-700",
+      textMuted: "text-slate-400"
+    },
+    dark: {
+      modal: "bg-slate-900 border-slate-800",
+      card: "bg-slate-950 border-slate-800",
+      innerCard: "bg-slate-900 border-slate-800",
+      textMain: "text-slate-200",
+      textMuted: "text-slate-500"
+    },
+    contrast: {
+      modal: "bg-black border-white border-2",
+      card: "bg-black border-white border",
+      innerCard: "bg-black border-white border",
+      textMain: "text-white",
+      textMuted: "text-zinc-400"
+    }
+  };
+
+  const style = themeStyles[theme];
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-[2000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="log-details-title"
-      onClick={onClose}   // ⬅ click outside closes
+      onClick={onClose}
     >
-
-      {/* OUTER MODAL */}
       <div
-        className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl relative"
-        onClick={(e) => e.stopPropagation()} // ⬅ prevent inner clicks
+        className={`rounded-3xl w-full max-w-5xl shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 ${style.modal}`}
+        onClick={(e) => e.stopPropagation()}
       >
-
-        {/* INNER SCROLL AREA */}
-        <div className="max-h-[90vh] overflow-y-auto no-scrollbar p-6 rounded-2xl">
-
-          {/* ❌ Close Button */}
-          <button
-            onClick={onClose}
-            className="
-              absolute top-5 right-5
-              w-8 h-8 rounded-full
-              flex items-center justify-center
-              text-gray-500 hover:text-gray-800
-              hover:bg-gray-100
-              transition
-            "
-            aria-label="Close"
-          >
-            ✕
-          </button>
-
-          {/* ===== HEADER ===== */}
-          <div className="mb-6">
-            <h2
-              id="log-details-title"
-              className="text-xl font-bold tracking-wide"
-            >
-              Detection Log Details
+        {/* Header */}
+        <div className={`${theme === 'contrast' ? 'bg-black border-b border-white' : 'bg-slate-950'} px-8 py-4 flex justify-between items-center`}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-600 rounded-lg text-white">
+              <ShieldAlert size={18} />
+            </div>
+            <h2 className="text-white text-sm font-black uppercase tracking-widest">
+              Forensic Analysis // Flow ID: <span className="text-indigo-400 font-mono ml-2">{log._id.slice(-8).toUpperCase()}</span>
             </h2>
           </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <X size={24} />
+          </button>
+        </div>
 
-          {/* ===== SUMMARY GRID ===== */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
-
-            {/* Timestamp */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide">
-                Timestamp
-              </p>
-              <p className="font-mono mt-1">
-                {new Date(log.timestamp).toLocaleString()}
-              </p>
-            </div>
-
-            {/* Ensemble Confidence */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
-                Ensemble Confidence
-              </p>
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div
-                  className={`h-3 rounded-full transition-all duration-700 ease-out ${confidenceBarClass(
-                    log.confidence || 0
-                  )}`}
-                  style={{ width: `${(log.confidence || 0) * 100}%` }}
-                />
-              </div>
-              <p className="text-sm font-semibold mt-1">
-                {((log.confidence || 0) * 100).toFixed(2)}%
-              </p>
-            </div>
-
-            {/* Source IP */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide">
-                Source IP
-              </p>
-              <p className="font-mono mt-1">{log.sourceIP}</p>
-            </div>
-
-            {/* Destination IP */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide">
-                Destination IP
-              </p>
-              <p className="font-mono mt-1">{log.destinationIP}</p>
-            </div>
-
-            {/* Final Label */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
-                Final Label
-              </p>
-              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${labelClass(log.finalLabel)}`}>
-                {labelEmoji(log.finalLabel)} {log.finalLabel}
-              </span>
-            </div>
-
-            {/* Severity */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
-                Severity Level
-              </p>
-              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${severityClass(log.severity)}`}>
-                {log.severity === "HIGH"
-                  ? "🔥"
-                  : log.severity === "MEDIUM"
-                  ? "⚠️"
-                  : "🟢"}{" "}
-                {log.severity}
-              </span>
-            </div>
-
-            {/* Hybrid Decision */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">
-                Hybrid Decision
-              </p>
-              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${labelClass(log.hybridLabel)}`}>
-                {labelEmoji(log.hybridLabel)} {log.hybridLabel}
-              </span>
-            </div>
-
-            {/* Aggregation */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-500 text-xs uppercase tracking-wide">
-                Aggregation Strategy
-              </p>
-              <p className="font-medium mt-1">
-                {log.aggregationMethod || "Ensemble Voting"}
-              </p>
-            </div>
-
-          </div>
-
-          {/* ===== PER-MODEL CONFIDENCE ===== */}
-          <div className="bg-gray-50 rounded-xl p-4 shadow-sm mb-8">
-            <h3 className="font-semibold mb-3">
-              Per-Model Confidence (Explainability)
-            </h3>
-
-            {log.modelProbabilities &&
-            Object.keys(log.modelProbabilities).length > 0 ? (
-              <PerModelConfidenceChart
-                modelProbabilities={log.modelProbabilities}
-              />
-            ) : (
-              <p className="text-sm text-gray-500">
-                No per-model confidence data available
-              </p>
-            )}
-          </div>
-
-          {/* ===== FLOW FEATURES ===== */}
-          <div>
-            <h3 className="font-semibold mb-3">
-              Extracted Flow Features
-            </h3>
-
-            {!log.flowFeatures ||
-            Object.keys(log.flowFeatures).length === 0 ? (
-              <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-700">
-                <p className="font-medium mb-1">
-                  Flow Features Not Persisted
-                </p>
-                <p className="text-gray-600">
-                  Flow-level features are used internally for real-time detection.
-                </p>
-                <p className="italic text-gray-500 mt-1">
-                  Stored selectively to optimize performance.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                {Object.entries(log.flowFeatures).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex justify-between bg-gray-50 px-3 py-2 rounded"
-                  >
-                    <span className="text-gray-600">{key}</span>
-                    <span className="font-mono font-medium text-gray-900">
-                      {typeof value === "number"
-                        ? value.toFixed(4)
-                        : value}
-                    </span>
+        <div className="max-h-[85vh] overflow-y-auto p-8 no-scrollbar">
+          
+          {/* Row 1: Telemetry */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+             {[
+               { icon: <Clock size={14} />, label: "Timeline", value: new Date(log.timestamp).toLocaleString() },
+               { icon: <Server size={14} />, label: "Flow Origin", value: log.sourceIP },
+               { icon: <Activity size={14} />, label: "Confidence", isConfidence: true },
+               { icon: <Database size={14} />, label: "Severity", isSeverity: true }
+             ].map((item, idx) => (
+               <div key={idx} className={`p-4 rounded-2xl border ${style.card}`}>
+                  <div className={`flex items-center gap-2 mb-2 ${style.textMuted}`}>
+                     {item.icon} <span className="text-[10px] font-black uppercase tracking-tighter">{item.label}</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  {item.isConfidence ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden shadow-inner">
+                        <div className={`h-full ${confidenceBarClass(log.confidence)}`} style={{ width: `${(log.confidence || 0) * 100}%` }} />
+                      </div>
+                      <span className={`text-sm font-black italic ${style.textMain}`}>{(log.confidence * 100).toFixed(2)}%</span>
+                    </div>
+                  ) : item.isSeverity ? (
+                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${severityClass(log.severity)}`}>
+                       {log.severity}
+                    </span>
+                  ) : (
+                    <p className={`font-mono text-sm font-bold truncate ${style.textMain}`}>{item.value}</p>
+                  )}
+               </div>
+             ))}
           </div>
 
+          <div className="grid grid-cols-12 gap-8">
+            {/* Left: Chart */}
+            <div className="col-span-12 lg:col-span-7">
+              <div className={`rounded-3xl p-6 shadow-sm h-full border ${style.innerCard}`}>
+                <div className="flex items-center justify-between mb-6">
+                   <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${style.textMuted}`}>Ensemble Consensus Graph</h3>
+                   <div className="px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-full text-[9px] font-black uppercase border border-indigo-500/20">
+                      Hybrid Validated
+                   </div>
+                </div>
+                <div className="h-[300px]">
+                  <PerModelConfidenceChart modelProbabilities={log.modelProbabilities} theme={theme} />
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Decision + Features */}
+            <div className="col-span-12 lg:col-span-5 space-y-4">
+               <div className={`${theme === 'contrast' ? 'bg-black border-2 border-white' : 'bg-slate-950'} rounded-3xl p-6 text-white shadow-xl relative overflow-hidden`}>
+                  <Cpu size={80} className="absolute -bottom-4 -right-4 text-white/5" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-4">Decision Outcome</h3>
+                  <div className="space-y-4">
+                     {[
+                       { label: "ML Model Result", value: log.finalLabel },
+                       { label: "Hybrid Overrule", value: log.hybridLabel }
+                     ].map((row, idx) => (
+                        <div key={idx} className="flex justify-between items-center border-b border-white/10 pb-3">
+                           <span className="text-xs font-medium text-slate-400">{row.label}</span>
+                           <span className={`px-3 py-1 rounded-md text-[9px] font-black border ${labelClass(row.value)}`}>
+                              {row.value}
+                           </span>
+                        </div>
+                     ))}
+                     <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-slate-400">Decision Engine</span>
+                        <span className="text-xs font-black text-indigo-400">{log.aggregationMethod || "Weighted Majority"}</span>
+                     </div>
+                  </div>
+               </div>
+
+               {/* ✅ FEATURE PREVIEW (Fixed mapping logic) */}
+               <div className={`rounded-3xl p-6 border ${style.card}`}>
+                  <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${style.textMuted} mb-4`}>Feature Sample</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                     {log.flowFeatures ? Object.entries(log.flowFeatures).slice(0, 4).map(([k, v]) => (
+                        <div key={k} className={`p-2 rounded-xl border ${style.innerCard}`}>
+                           <p className={`text-[8px] font-black uppercase truncate ${style.textMuted}`}>{k}</p>
+                           <p className={`text-[10px] font-mono font-bold ${style.textMain}`}>{v}</p>
+                        </div>
+                     )) : <p className="text-[10px] italic text-slate-500">Full vector not persisted.</p>}
+                  </div>
+               </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

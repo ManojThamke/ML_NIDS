@@ -11,29 +11,22 @@ import {
 import { useEffect, useState } from "react";
 import { getAlertTopDestinations } from "../../api";
 
-/* 🎨 Soft attack-themed pastel colors */
-const COLORS = [
-  "#ef4444", // Strong red
-  "#f87171",
-  "#fca5a5",
-  "#fecaca",
-  "#fee2e2",
-];
+const RED_GRADIENT = ["#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"];
 
-/* Clean dashboard tooltip */
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload || !payload.length) return null;
-
   const { destination, count } = payload[0].payload;
 
   return (
-    <div className="bg-gray-900 text-white rounded-lg px-4 py-2 shadow-lg">
-      <p className="text-sm font-semibold mb-1">
-        {destination}
-      </p>
-      <p className="text-sm text-gray-300">
-        Attacks: <span className="font-semibold text-white">{count}</span>
-      </p>
+    <div className="bg-gray-900/95 backdrop-blur-md border border-gray-700 rounded-xl px-4 py-3 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-1">Target Identity</p>
+      <p className="text-sm font-black text-white mb-1.5">{destination}</p>
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+        <p className="text-xs text-gray-300">
+          Incidents: <span className="font-bold text-white">{count.toLocaleString()}</span>
+        </p>
+      </div>
     </div>
   );
 };
@@ -49,62 +42,63 @@ function TopAttackedDestinationsChart() {
 
   if (!data.length) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border animate-fade-in">
-        <p className="text-sm text-gray-500">
-          No attacked destination data available
-        </p>
+      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 h-[380px] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No Active Threats Detected</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col animate-fade-in">
-      <h3 className="font-semibold mb-2 text-gray-700">
-        Top Attacked Destinations
-      </h3>
+    /* Increased height slightly to h-[380px] for better breathing room */
+    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 h-[380px] flex flex-col transition-all hover:shadow-xl group">
+      
+      {/* 1. Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="font-bold text-gray-800 text-lg tracking-tight">Top Attacked Destinations</h3>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Asset Risk Profiling</p>
+        </div>
+        <div className="bg-red-50 px-2 py-1 rounded-md border border-red-100">
+           <span className="text-[10px] font-black text-red-600 uppercase tracking-wider">Live Intel</span>
+        </div>
+      </div>
 
-      {/* Chart */}
-      <div className="h-[240px]">
+      {/* 2. Responsive Chart Area - flex-grow ensures it takes available space */}
+      <div className="flex-grow w-full overflow-hidden">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 10, right: 20, left: 10, bottom: 6 }}
+            /* Reduced bottom margin to 0 to prevent pushing the footer out */
+            margin={{ top: 5, right: 35, left: 10, bottom: 0 }}
             barCategoryGap="20%"
           >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              horizontal={false}
-              stroke="#e5e7eb"
-            />
-
-            <XAxis
-              type="number"
-              allowDecimals={false}
-              tick={{ fontSize: 11, fill: "#6b7280" }}
-            />
-
+            <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#f1f5f9" />
+            <XAxis type="number" hide />
             <YAxis
               type="category"
               dataKey="destination"
-              width={120}
-              tick={{ fontSize: 11, fill: "#374151" }}
+              width={90}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#64748b", fontWeight: 700 }}
             />
-
-            <Tooltip content={<CustomTooltip />} />
-
+            <Tooltip 
+              content={<CustomTooltip />} 
+              cursor={{ fill: '#f8fafc', radius: 8 }}
+            />
             <Bar
               dataKey="count"
-              radius={[0, 8, 8, 0]}
+              radius={[0, 6, 6, 0]}
               isAnimationActive={true}
-              animationBegin={200}
-              animationDuration={1800}
-              animationEasing="ease-in-out"
+              animationDuration={2000}
             >
               {data.map((_, index) => (
                 <Cell
-                  key={index}
-                  fill={COLORS[index % COLORS.length]}
+                  key={`cell-${index}`}
+                  fill={RED_GRADIENT[index % RED_GRADIENT.length]}
                 />
               ))}
             </Bar>
@@ -112,10 +106,12 @@ function TopAttackedDestinationsChart() {
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation */}
-      <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
-        Displays the destinations most frequently targeted by detected attacks.
-      </p>
+      {/* 3. Perfected Footer - Added mt-2 for consistent gap */}
+      <div className="mt-2 pt-3 border-t border-gray-100 w-full">
+        <p className="text-[10.5px] text-gray-400 font-medium italic text-center leading-relaxed">
+          Prioritizing destinations by total incident frequency.
+        </p>
+      </div>
     </div>
   );
 }

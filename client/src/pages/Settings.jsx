@@ -178,7 +178,7 @@ python detector_live_capture_v2.py \\
   /* ================= UI ================= */
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">
         Detection Settings (Phase-2)
       </h1>
