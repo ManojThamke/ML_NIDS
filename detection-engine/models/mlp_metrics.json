@@ -1,0 +1,55 @@
+{
+  "best_params": {
+    "activation": "relu",
+    "alpha": 0.0001,
+    "hidden_layer_sizes": [
+      50
+    ],
+    "learning_rate_init": 0.001
+  },
+  "accuracy": 0.9822414854647519,
+  "precision": 0.9431849125891808,
+  "recall": 0.9680835135086574,
+  "f1": 0.955472032708554,
+  "roc_auc": 0.997129421541303,
+  "confusion_matrix": [
+    [
+      2014978,
+      29210
+    ],
+    [
+      15987,
+      484914
+    ]
+  ],
+  "report": {
+    "0": {
+      "precision": 0.992128372473184,
+      "recall": 0.9857107076257174,
+      "f1-score": 0.9889091280744551,
+      "support": 2044188.0
+    },
+    "1": {
+      "precision": 0.9431849125891808,
+      "recall": 0.9680835135086574,
+      "f1-score": 0.955472032708554,
+      "support": 500901.0
+    },
+    "accuracy": 0.9822414854647519,
+    "macro avg": {
+      "precision": 0.9676566425311823,
+      "recall": 0.9768971105671874,
+      "f1-score": 0.9721905803915045,
+      "support": 2545089.0
+    },
+    "weighted avg": {
+      "precision": 0.9824957710202065,
+      "recall": 0.9822414854647519,
+      "f1-score": 0.9823283466142094,
+      "support": 2545089.0
+    }
+  },
+  "train_time_seconds": 1722.3545591831207,
+  "inference_time_seconds": 0.8790497779846191,
+  "sample_size_used": 8483628
+}

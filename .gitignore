@@ -1,42 +1,100 @@
-# Ignore datasets but keep folder
-data/*
-!data/.gitkeep
+# =====================================================
+# OS / System Generated Files
+# =====================================================
+Thumbs.db
+Desktop.ini
+.DS_Store
 
-# Ignore logs but keep folder
-logs/*
-!logs/.gitkeep
-
-release_phase1/
-
-
-# Ignore models but keep folder
-detection-engine/models/*
-!detection-engine/models/.gitkeep
-
-# Ignore virtual environment
+# =====================================================
+# Python Virtual Environments & Secrets
+# =====================================================
+.env
+.venv
 venv/
+ENV/
 
-# Ignore model files
-*.pkl
-*.joblib
-
-# Ignore Python cache
+# =====================================================
+# Python Cache
+# =====================================================
 __pycache__/
 *.pyc
 
-# Ignore node modules
-backend/node_modules/
-frontend/node_modules/
+# =====================================================
+# Jupyter Notebook
+# =====================================================
+.ipynb_checkpoints/
 
-# Ignore build files
-frontend/build/
-backend/dist/
+# =====================================================
+# Network / NIDS Raw Traffic Files
+# =====================================================
+*.pcap
+*.pcapng
 
-# Ignore IDE/editor configs
+# =====================================================
+# CSV Files (Auto-generated logs & features)
+# ⚠️ Comment this if you want to track static CSV datasets
+# =====================================================
+*.csv
+
+# =====================================================
+# Data, Logs & Results (ignore content, keep folders)
+# =====================================================
+data/*
+!data/.gitkeep
+
+logs/*
+!logs/.gitkeep
+
+results/*
+!results/.gitkeep
+
+exports/*
+!exports/.gitkeep
+
+# =====================================================
+# ML Models & Scalers (important for NIDS)
+# =====================================================
+models/*
+!models/.gitkeep
+
+scalers/*
+!scalers/.gitkeep
+
+# Serialized ML models
+*.pkl
+*.joblib
+
+# =====================================================
+# Detection Engine Specific Logs
+# =====================================================
+detection-engine/realtime_v2/logs/
+
+# =====================================================
+# Node / Web Application (client & server)
+# =====================================================
+client/node_modules/
+server/node_modules/
+
+# Build outputs (if any)
+client/build/
+server/dist/
+
+# =====================================================
+# IDE / Editor Settings
+# =====================================================
 .vscode/
 .idea/
 *.swp
 
+# =====================================================
+# Release / Packaging Artifacts
+# =====================================================
 release_phase1/
-release_phase1_demo_results.zip
 release_phase1.zip
+release_phase1_demo_results.zip
+
+# =====================================================
+# Misc / Temporary
+# =====================================================
+--model
+query
