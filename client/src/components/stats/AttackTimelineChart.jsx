@@ -1,3 +1,4 @@
+import React from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -8,117 +9,120 @@ import {
   CartesianGrid,
 } from "recharts";
 
-function AttackTimelineChart({ data }) {
-  /* 🛡️ Hard guard */
+/**
+ * Enhanced Attack Timeline Chart
+ * Features: Dashboard-matched shadows, glowing area fills, and high-density NOC typography.
+ */
+function AttackTimelineChart({ data, theme = 'light' }) {
+  
+  // 🔹 Dashboard Shadow Architecture
+  const containerStyle = theme === 'light' 
+    ? "bg-white border-slate-100 shadow-[0_20px_50px_rgba(79,70,229,0.08)] shadow-indigo-100/40 text-slate-800"
+    : "bg-slate-900 border-slate-800 shadow-[0_20px_60px_rgba(0,0,0,0.6)] shadow-black text-slate-100";
+
   if (!Array.isArray(data) || data.length === 0) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border h-[380px] flex items-center justify-center animate-fade-in">
-        <p className="text-sm text-gray-400">
-          No attack activity detected in this period
-        </p>
+      <div className={`${containerStyle} rounded-[2.5rem] p-8 flex items-center justify-center h-[380px]`}>
+        <p className="text-sm font-black uppercase tracking-widest opacity-40 italic">Waiting for detection telemetry...</p>
       </div>
     );
   }
 
-  /* 🔧 Ensure baseline exists for animation */
-  const normalizedData =
-    data.length === 1
-      ? [{ ...data[0], attacks: 0 }, data[0]]
-      : data;
-
-  /* 🔧 Compute safe Y max */
-  const maxAttacks = Math.max(
-    ...normalizedData.map((d) => d.attacks || 0)
-  );
+  const normalizedData = data.length === 1 ? [{ ...data[0], attacks: 0 }, data[0]] : data;
+  const maxAttacks = Math.max(...normalizedData.map((d) => d.attacks || 0));
   const yMax = Math.max(5, maxAttacks + 1);
 
-  return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col animate-fade-in">
-      <h3 className="font-semibold text-gray-700 mb-2">
-        Attack Timeline
-      </h3>
+  /* Sophisticated Forensic Tooltip */
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload || !payload.length) return null;
+    return (
+      <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 p-4 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Temporal Node</p>
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-bold text-white italic">{label}</span>
+          <div className="h-4 w-[1px] bg-slate-700" />
+          <span className="text-sm font-black text-rose-400">
+            {payload[0].value.toLocaleString()} <small className="text-[9px] font-bold opacity-60 uppercase">Attacks</small>
+          </span>
+        </div>
+      </div>
+    );
+  };
 
-      {/* 🔥 Fixed-height chart area */}
-      <div className="h-[250px]">
+  return (
+    <div className={`${containerStyle} rounded-[2.5rem] p-8 h-[380px] flex flex-col transition-all duration-700 animate-in fade-in slide-in-from-bottom-4`}>
+      
+      {/* 🚀 Header Logic */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-[0.2em] opacity-80">
+            Anomaly Temporal Matrix
+          </h3>
+          <p className="text-[11px] font-bold text-indigo-500/70 uppercase tracking-widest mt-1">
+            Real-time Threat Frequency Timeline
+          </p>
+        </div>
+        <div className="p-2 bg-rose-500/10 rounded-xl">
+           <div className={`w-2 h-2 rounded-full ${maxAttacks > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
+        </div>
+      </div>
+
+      {/* 📊 Chart Matrix */}
+      <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={normalizedData}>
+          <AreaChart data={normalizedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
-              {/* Smooth gradient fill */}
-              <linearGradient
-                id="attackGradient"
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop offset="0%" stopColor="#fca5a5" stopOpacity={0.55} />
-                <stop offset="70%" stopColor="#fecaca" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="#fee2e2" stopOpacity={0.08} />
+              <linearGradient id="attackGlow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
               </linearGradient>
             </defs>
 
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="#e5e7eb"
+            <CartesianGrid 
+              vertical={false} 
+              strokeDasharray="4 4" 
+              stroke={theme === 'dark' ? "#1e293b" : "#f1f5f9"} 
             />
-
-            <XAxis
-              dataKey="time"
-              tick={{ fontSize: 11, fill: "#6b7280" }}
-              tickMargin={6}
+            
+            <XAxis 
+              dataKey="time" 
+              axisLine={false} 
+              tickLine={false}
+              tick={{ fontSize: 10, fontStyle: 'italic', fontWeight: 800, fill: theme === 'dark' ? "#64748b" : "#94a3b8" }}
+              dy={10}
             />
-
-            <YAxis
+            
+            <YAxis 
               domain={[0, yMax]}
-              allowDecimals={false}
-              tick={{ fontSize: 11, fill: "#6b7280" }}
-              padding={{ top: 18 }}
+              axisLine={false} 
+              tickLine={false}
+              tick={{ fontSize: 10, fontWeight: 800, fill: theme === 'dark' ? "#64748b" : "#94a3b8" }}
             />
-
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (!active || !payload || !payload.length) return null;
-                return (
-                  <div className="bg-gray-900 text-white rounded-lg px-4 py-2 shadow-lg">
-                    <p className="text-sm font-semibold mb-1">
-                      {label}
-                    </p>
-                    <p className="text-sm text-gray-300">
-                      Attacks:{" "}
-                      <span className="font-semibold text-white">
-                        {payload[0].value}
-                      </span>
-                    </p>
-                  </div>
-                );
-              }}
-            />
+            
+            <Tooltip content={<CustomTooltip />} />
 
             <Area
               type="monotone"
               dataKey="attacks"
-              stroke="#ef4444"
-              strokeWidth={2}
-              fill="url(#attackGradient)"
-              dot={{ r: 3, fill: "#ef4444" }}
-              activeDot={{ r: 5 }}
-              connectNulls
-
-              /* 🔥 Smooth, readable animation */
+              stroke="#f43f5e"
+              strokeWidth={3}
+              fill="url(#attackGlow)"
+              dot={{ r: 4, fill: "#f43f5e", strokeWidth: 2, stroke: theme === 'dark' ? "#0f172a" : "#fff" }}
+              activeDot={{ r: 6, strokeWidth: 0, fill: "#f43f5e", shadow: "0 0 10px rgba(244,63,94,0.5)" }}
               isAnimationActive={true}
-              animationBegin={300}
-              animationDuration={1800}
-              animationEasing="ease-in-out"
+              animationDuration={2000}
+              style={{ filter: "drop-shadow(0 4px 6px rgba(244,63,94,0.2))" }}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation line */}
-      <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
-        Spikes indicate abnormal or suspicious traffic over time.
-      </p>
+      {/* 📑 Analytics Caption */}
+      <div className={`mt-6 pt-4 border-t ${theme === 'dark' ? 'border-slate-800' : 'border-slate-50'}`}>
+        <p className="text-[10px] font-black text-center uppercase tracking-widest opacity-50 italic leading-snug">
+          Amplitude spikes correlate with detected malicious signature clusters over the current observation window
+        </p>
+      </div>
     </div>
   );
 }

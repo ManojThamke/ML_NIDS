@@ -70,7 +70,7 @@ function Topbar({ monitoring, setMonitoring }) {
             <div className={`relative w-2 h-2 rounded-full ${monitoring ? "bg-emerald-500" : "bg-rose-500"}`} />
           </div>
           <span className={`text-[11px] font-black uppercase tracking-widest ${monitoring ? "text-emerald-600" : "text-rose-600"}`}>
-            {monitoring ? "Engine Running" : "Engine Halted"}
+            {monitoring ? "Engine Running" : "Engine Stopped"}
           </span>
         </div>
 

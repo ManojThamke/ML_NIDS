@@ -1,12 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-/* Hide scrollbar but allow scroll */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
 
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE & Edge */
-  scrollbar-width: none;     /* Firefox */
+@layer base {
+  /* 🌓 Smooth Theme Transition */
+  body {
+    @apply transition-colors duration-500 ease-in-out;
+  }
+
+  /* 🛡️ Custom Scrollbar for NOC Aesthetics */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+  }
 }

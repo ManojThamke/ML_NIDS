@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -8,96 +9,121 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import { useEffect, useState } from "react";
 import { getAlertTopDestinations } from "../../api";
 
-/* 🎨 Soft attack-themed pastel colors */
-const COLORS = [
-  "#ef4444", // Strong red (high risk)
-  "#f87171", // Medium red
-  "#fca5a5", // Soft red
-  "#fecaca", // Very light red
-  "#fee2e2", // Faded red (background-safe)
-];
-
-
-const CustomTooltip = ({ active, payload }) => {
-  if (!active || !payload || !payload.length) return null;
-
-  const { destination, count } = payload[0].payload;
-
-  return (
-    <div className="bg-white border rounded-lg px-4 py-2 shadow-lg">
-      <p className="text-sm font-semibold text-gray-700 mb-1">
-        {destination}
-      </p>
-      <p className="text-sm text-gray-600">
-        Attacks: <span className="font-semibold">{count}</span>
-      </p>
-    </div>
-  );
-};
-
-function TopAttackedDestinationsChart() {
+/**
+ * TopAttackedDestinationsChart V3.0
+ * Fully integrated with Shadow-Glow architecture and theme-adaptive depth.
+ */
+function TopAttackedDestinationsChart({ theme = 'light' }) {
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 🎨 Semantic Risk Palette (matching forensic grid)
+  const RED_GRADIENT = theme === 'dark' 
+    ? ["#f43f5e", "#ef4444", "#f87171", "#fb7185", "#fda4af"] 
+    : ["#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"];
+
+  // 🔹 Dashboard Shadow Architecture
+  const containerStyle = theme === 'light' 
+    ? "bg-white border-slate-100 shadow-[0_20px_50px_rgba(79,70,229,0.08)] shadow-indigo-100/40 text-slate-800"
+    : "bg-slate-900 border-slate-800 shadow-[0_20px_60px_rgba(0,0,0,0.6)] shadow-black text-slate-100";
 
   useEffect(() => {
     getAlertTopDestinations()
-      .then((res) => setData(res.data))
-      .catch(console.error);
+      .then((res) => {
+        setData(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Forensic Retrieval Failure:", err);
+        setLoading(false);
+      });
   }, []);
 
-  if (!data.length) {
+  const CustomTooltip = ({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    const { destination, count } = payload[0].payload;
+
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border">
-        <p className="text-sm text-gray-500">
-          No attacked destination data available
-        </p>
+      <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl px-4 py-3 shadow-2xl animate-in zoom-in-95 duration-200">
+        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-400 mb-1">Target Identity</p>
+        <p className="text-sm font-black text-white mb-2 italic tabular-nums">{destination}</p>
+        <div className="flex items-center gap-3 border-t border-slate-800 pt-2">
+          <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+          <p className="text-xs text-slate-300 font-bold">
+            Incidents: <span className="text-white font-black">{count.toLocaleString()}</span>
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading || !data.length) {
+    return (
+      <div className={`${containerStyle} rounded-[2.5rem] p-8 h-[380px] flex items-center justify-center transition-all duration-700 animate-pulse`}>
+        <div className="text-center space-y-3">
+           <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto" />
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+             {loading ? "Decrypting Target Vectors..." : "No Active Threats Detected"}
+           </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border h-[340px] flex flex-col">
-      <h3 className="font-semibold mb-2 text-gray-700">
-        Top Attacked Destinations
-      </h3>
+    <div className={`${containerStyle} rounded-[2.5rem] p-6 h-[380px] flex flex-col transition-all duration-700 hover:scale-[1.01] group relative overflow-hidden`}>
+      
+      {/* 🚀 Header: Risk Profiling */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h3 className="font-black text-slate-800 dark:text-white text-lg tracking-tighter uppercase">
+            Target Vulnerability Matrix
+          </h3>
+          <p className="text-[10px] text-indigo-500 font-black uppercase tracking-[0.3em]">Asset Risk Profiling</p>
+        </div>
+        <div className="bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 shadow-sm flex items-center gap-2">
+           <div className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+           <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest">Live Threat Intel</span>
+        </div>
+      </div>
 
-      {/* 🔥 Fixed-height chart area */}
-      <div className="h-[250px]">
+      {/* 📊 Matrix Rendering Area */}
+      <div className="flex-grow w-full overflow-hidden">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 10, right: 20, left: 10, bottom: 6 }}
-            barCategoryGap="20%"
+            margin={{ top: 5, right: 40, left: 10, bottom: 5 }}
+            barCategoryGap="25%"
           >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              horizontal={false}
-              stroke="#e5e7eb"
-            />
-
-            <XAxis
-              type="number"
-              allowDecimals={false}
-              tick={{ fontSize: 11, fill: "#6b7280" }}
-            />
-
+            <CartesianGrid horizontal={false} strokeDasharray="4 4" stroke={theme === 'dark' ? "#1e293b" : "#f1f5f9"} />
+            <XAxis type="number" hide />
             <YAxis
               type="category"
               dataKey="destination"
-              width={120}
-              tick={{ fontSize: 11, fill: "#374151" }}
+              width={100}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: theme === 'dark' ? "#64748b" : "#94a3b8", fontWeight: 800, fontStyle: 'italic' }}
             />
-
-            <Tooltip content={<CustomTooltip />} />
-
-            <Bar dataKey="count" radius={[0, 8, 8, 0]}>
-              {data.map((_, index) => (
+            <Tooltip 
+              content={<CustomTooltip />} 
+              cursor={{ fill: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(79,70,229,0.03)', radius: 12 }}
+            />
+            <Bar
+              dataKey="count"
+              radius={[0, 12, 12, 0]}
+              animationDuration={2500}
+              animationEasing="ease-in-out"
+            >
+              {data.map((entry, index) => (
                 <Cell
-                  key={index}
-                  fill={COLORS[index % COLORS.length]}
+                  key={`cell-${index}`}
+                  fill={RED_GRADIENT[index % RED_GRADIENT.length]}
+                  className="transition-all duration-500 hover:opacity-80 cursor-crosshair"
+                  style={{ filter: `drop-shadow(0 4px 10px ${RED_GRADIENT[index % RED_GRADIENT.length]}44)` }}
                 />
               ))}
             </Bar>
@@ -105,10 +131,12 @@ function TopAttackedDestinationsChart() {
         </ResponsiveContainer>
       </div>
 
-      {/* Explanation line */}
-      <p className="-mt-2 text-sm text-gray-600 text-center leading-snug">
-        Displays the destinations most frequently targeted by detected attacks.
-      </p>
+      {/* 📑 Footer: Technical Baseline */}
+      <div className={`mt-4 pt-4 border-t ${theme === 'dark' ? 'border-slate-800' : 'border-slate-50'} w-full`}>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center opacity-60 italic">
+          Categorizing network infrastructure based on cumulative incident frequency
+        </p>
+      </div>
     </div>
   );
 }
