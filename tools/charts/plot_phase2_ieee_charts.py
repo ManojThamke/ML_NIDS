@@ -7,7 +7,7 @@ import os
 # Paths
 # ----------------------------------
 RESULTS_FILE = "results/offline_evaluation_v2.json"
-OUTPUT_DIR = os.path.join("docs", "phase2_charts")
+OUTPUT_DIR = os.path.join("docs", "phase2_charts_ieee")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"📁 Charts will be saved in: {os.path.abspath(OUTPUT_DIR)}")
@@ -24,105 +24,107 @@ train_x = np.arange(len(train_labels))
 
 models = list(results.keys())
 
+# Compact bar width
+bar_width = 0.07
+
+# IEEE-safe color palette
+colors = plt.get_cmap("tab10").colors
+
 # ----------------------------------
-# Generic plotting function
+# Plot function (COMPACT + IEEE SAFE)
 # ----------------------------------
 def plot_metric(metric_key, ylabel, title, filename):
-    plt.figure(figsize=(14, 6))
-    bar_width = 0.08
+    plt.figure(figsize=(6, 4))  # ✅ SQUARE / COMPACT
 
-    # Plot bars
     for i, model in enumerate(models):
-        values = [
-            results[model][p][metric_key] * 100
-            for p in train_labels
-        ]
-        plt.bar(train_x + i * bar_width, values, bar_width, label=model)
+        values = [results[model][p][metric_key] * 100 for p in train_labels]
+        plt.bar(
+            train_x + i * bar_width,
+            values,
+            bar_width,
+            color=colors[i % len(colors)],
+            label=model
+        )
 
-    # Axis labels & title
-    plt.xlabel("Training Percentage (%)", fontsize=11)
-    plt.ylabel(ylabel, fontsize=11)
-    plt.title(title, fontsize=12)
-    plt.xticks(train_x + bar_width * len(models) / 2, train_labels)
+    # Labels & title
+    plt.xlabel("Training Data Percentage (%)", fontsize=10)
+    plt.ylabel(ylabel, fontsize=10)
+    plt.title(title, fontsize=11)
 
-    # Legend (centered)
+    plt.xticks(
+        train_x + bar_width * len(models) / 2,
+        train_labels,
+        fontsize=9
+    )
+
+    # Legend (compact, top-center)
     plt.legend(
         loc="upper center",
-        bbox_to_anchor=(0.5, 0.30),
+        bbox_to_anchor=(0.50, 0.30),
         ncol=3,
-        fontsize=9,
+        fontsize=7,
         frameon=True
     )
 
-    # -------------------------------
-    # Dataset information annotation
-    # -------------------------------
-    dataset_info = (
-        "Dataset: CICIDS2018\n"
-        "Total Samples: ~16.2M\n"
-        "Train/Test Split: 80% / 20%\n"
-        "Train: ~12.99M | Test: ~3.25M"
+    # Light grid (IEEE style)
+    plt.grid(axis="y", linestyle="--", alpha=0.4)
+
+    # Dataset note (small, bottom-right)
+    plt.figtext(
+        0.95, 0.88,
+        "Dataset: CICIDS2018 | Train/Test: 80/20",
+        ha="right",
+        va="bottom",
+        fontsize=8
     )
 
-    plt.text(
-        0.70, 0.30,
-        dataset_info,
-        transform=plt.gca().transAxes,
-        fontsize=9,
-        verticalalignment="top",
-        bbox=dict(
-            boxstyle="round",
-            facecolor="white",
-            alpha=0.85
-        )
-    )
-
-    # Grid & save
-    plt.grid(axis="y", linestyle="--", alpha=0.6)
-    plt.tight_layout()
+    # Tight layout with reserved legend space
+    plt.tight_layout(rect=[0, 0.05, 1, 0.90])
 
     save_path = os.path.join(OUTPUT_DIR, filename)
-    plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    plt.savefig(save_path, dpi=300)
     plt.close()
 
     print(f"✅ Saved: {filename}")
 
 # ----------------------------------
-# Generate IEEE-style figures
+# Generate charts
 # ----------------------------------
+
 plot_metric(
     metric_key="accuracy",
     ylabel="Accuracy (%)",
-    title="Comparative Accuracy Analysis of ML Models",
-    filename="Fig1_Accuracy_IEEE.png"
+    title="Offline Accuracy Comparison Across Training Sizes",
+    filename="Fig1_Offline_Accuracy.png"
 )
 
 plot_metric(
     metric_key="precision",
     ylabel="Precision (%)",
-    title="Comparative Precision Analysis of ML Models",
-    filename="Fig2_Precision_IEEE.png"
+    title="Offline Precision Comparison Across Training Sizes",
+    filename="Fig2_Offline_Precision.png"
 )
 
 plot_metric(
     metric_key="recall",
     ylabel="Recall (%)",
-    title="Comparative Recall Analysis of ML Models",
-    filename="Fig3_Recall_IEEE.png"
+    title="Offline Recall Comparison Across Training Sizes",
+    filename="Fig3_Offline_Recall.png"
 )
 
+# ✅ MAIN OFFLINE FIGURE (THIS ONE GOES IN PAPER)
 plot_metric(
     metric_key="f1_score",
     ylabel="F1-Score (%)",
-    title="Comparative F1-Score Analysis of ML Models",
-    filename="Fig4_F1Score_IEEE.png"
+    title="Offline F1-Score Comparison of ML Models Across Training Sizes",
+    filename="Fig4_Offline_F1Score.png"
 )
 
 plot_metric(
     metric_key="roc_auc",
     ylabel="ROC–AUC (%)",
-    title="Comparative ROC–AUC Analysis of ML Models",
-    filename="Fig5_ROCAUC_IEEE.png"
+    title="Offline ROC–AUC Comparison Across Training Sizes",
+    filename="Fig5_Offline_ROCAUC.png"
 )
 
-print("\n🎯 Phase-2.1 IEEE charts generated successfully.")
+print("\n🎯 All offline evaluation charts generated (COMPACT & IEEE READY).")

@@ -1,47 +1,27 @@
 import pandas as pd
+import numpy as np
 
-
-def compute_confusion_matrix(df: pd.DataFrame) -> dict:
+def compute_confusion_matrix_vectorized(df: pd.DataFrame) -> dict:
     """
-    Compute proxy confusion matrix using ensemble voting logic.
-
-    Proxy Ground Truth:
-    - ATTACK if attackVotes >= ceil(totalModels / 2)
-    - BENIGN otherwise
+    Computes confusion matrix using vectorized boolean masks.
+    Significantly faster than iterrows().
     """
+    # 1. Define Proxy Ground Truth (Vectorized)
+    # True if attackVotes >= 50% of totalModels
+    proxy_truth = (df["attackVotes"] >= (df["totalModels"] / 2))
+    
+    # 2. Define Predictions
+    predictions = (df["finalLabel"] == "ATTACK")
 
-    if df.empty:
-        raise ValueError("Empty DataFrame passed to confusion matrix")
-
-    tp = fp = tn = fn = 0
-
-    for _, row in df.iterrows():
-        # Proxy ground truth
-        expected_label = (
-            "ATTACK"
-            if row["attackVotes"] >= (row["totalModels"] / 2)
-            else "BENIGN"
-        )
-
-        predicted_label = row["finalLabel"]
-
-        if expected_label == "ATTACK" and predicted_label == "ATTACK":
-            tp += 1
-        elif expected_label == "BENIGN" and predicted_label == "ATTACK":
-            fp += 1
-        elif expected_label == "BENIGN" and predicted_label == "BENIGN":
-            tn += 1
-        elif expected_label == "ATTACK" and predicted_label == "BENIGN":
-            fn += 1
-
-    fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
-    fnr = fn / (fn + tp) if (fn + tp) > 0 else 0
+    # 3. Calculate TP, FP, TN, FN using bitwise logic
+    tp = (proxy_truth & predictions).sum()
+    fp = (~proxy_truth & predictions).sum()
+    tn = (~proxy_truth & ~predictions).sum()
+    fn = (proxy_truth & ~predictions).sum()
 
     return {
-        "TP": tp,
-        "FP": fp,
-        "TN": tn,
-        "FN": fn,
-        "False Positive Rate": round(fpr, 4),
-        "False Negative Rate": round(fnr, 4),
+        "TP": int(tp), "FP": int(fp), 
+        "TN": int(tn), "FN": int(fn),
+        "False Positive Rate": round(fp / (fp + tn), 4) if (fp + tn) > 0 else 0,
+        "False Negative Rate": round(fn / (fn + tp), 4) if (fn + tp) > 0 else 0,
     }
