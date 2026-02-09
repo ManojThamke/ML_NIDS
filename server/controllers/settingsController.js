@@ -28,9 +28,11 @@ exports.saveSettings = async (req, res) => {
       voteK,
       flowTimeout,
       interface: iface,
+      protocol,
     } = req.body;
 
-    // 🔒 Basic validation
+    /* ================= VALIDATION ================= */
+
     if (!iface || iface.trim() === "") {
       return res.status(400).json({
         error: "Network interface is required",
@@ -43,12 +45,15 @@ exports.saveSettings = async (req, res) => {
       });
     }
 
+    /* ================= SAVE SETTINGS ================= */
+
     const settings = new Settings({
       models,
-      threshold,
-      voteK,
-      flowTimeout,
-      interface: iface,
+      threshold: threshold ?? 0.5,
+      voteK: voteK ?? 3,
+      flowTimeout: flowTimeout ?? 10,
+      interface: iface.trim(),
+      protocol: protocol ?? "both",
     });
 
     await settings.save();

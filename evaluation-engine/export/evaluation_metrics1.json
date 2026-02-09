@@ -1,0 +1,109 @@
+{
+    "meta": {
+        "generatedAt": "2026-02-09T07:09:30.620333",
+        "timeWindow": "all",
+        "engine": "evaluation-engine",
+        "mode": "real-time-log-analysis"
+    },
+    "confusionMatrix": {
+        "TP": 249,
+        "FP": 104,
+        "TN": 55457,
+        "FN": 0,
+        "False Positive Rate": 0.0019,
+        "False Negative Rate": 0.0
+    },
+    "classificationMetrics": {
+        "Accuracy": 0.9981,
+        "Precision": 0.7054,
+        "Recall": 1.0,
+        "F1-Score": 0.8272,
+        "Support": {
+            "ATTACK": 249,
+            "BENIGN": 55561
+        }
+    },
+    "confidenceStability": {
+        "mean": 0.0301,
+        "std": 0.0366,
+        "variance": 0.0013
+    },
+    "perModelAnalysis": {
+        "Average Confidence Per Model": {
+            "LogisticRegression": 0.002535,
+            "DecisionTree": 0.046158,
+            "RandomForest": 0.09068,
+            "KNN": 0.009694,
+            "NaiveBayes": 0.003428,
+            "GradientBoosting": 0.047834,
+            "XGBoost": 0.019677,
+            "LightGBM": 0.027632,
+            "MLP": 0.019684
+        },
+        "Dominant Model Frequency": {
+            "GradientBoosting": 9220,
+            "DecisionTree": 2972,
+            "RandomForest": 34390,
+            "KNN": 1282,
+            "LightGBM": 5366,
+            "MLP": 2108,
+            "XGBoost": 316,
+            "NaiveBayes": 48,
+            "LogisticRegression": 108
+        },
+        "Model Ranking (by dominance)": [
+            [
+                "RandomForest",
+                34390
+            ],
+            [
+                "GradientBoosting",
+                9220
+            ],
+            [
+                "LightGBM",
+                5366
+            ],
+            [
+                "DecisionTree",
+                2972
+            ],
+            [
+                "MLP",
+                2108
+            ],
+            [
+                "KNN",
+                1282
+            ],
+            [
+                "XGBoost",
+                316
+            ],
+            [
+                "LogisticRegression",
+                108
+            ],
+            [
+                "NaiveBayes",
+                48
+            ]
+        ],
+        "Threshold Proximity": {
+            "near_threshold_count": 18,
+            "total_predictions": 55810,
+            "percentage": 0.03
+        }
+    },
+    "ensembleComparison": {
+        "Average Ensemble Confidence": 0.03012,
+        "Average Best Model Confidence": 0.156668,
+        "Ensemble vs Model Confidence Gain": -0.126548,
+        "Voting Agreement Rate": 0.9272,
+        "Alert Noise": {
+            "Low Confidence ATTACK Alerts": 348,
+            "Total ATTACK Alerts": 353,
+            "Noise Ratio": 0.9858
+        }
+    }
+}

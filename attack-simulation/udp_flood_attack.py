@@ -4,10 +4,10 @@ import random
 import time
 
 # --- CONFIGURATION ---
-TARGET_IP = "10.71.36.211"
-TARGET_PORT = 5173
+TARGET_IP = "192.168.56.102"
+TARGET_PORT = 53
 PROCESS_COUNT = multiprocessing.cpu_count() # Use ALL your cores
-DURATION = 120 # Longer duration helps ML models aggregate flow data
+DURATION = 240 # Longer duration helps ML models aggregate flow data
 
 def ultimate_push():
     # Using a raw UDP socket for maximum speed

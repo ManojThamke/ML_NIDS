@@ -4,9 +4,9 @@ import time
 from scapy.all import Ether, IP, TCP, sendp, RandShort, get_if_hwaddr, conf
 
 # --- CONFIGURATION ---
-TARGET_IP = "10.71.36.211" 
-SOURCE_IP = "192.168.1.50"
-TARGET_PORT = 5173         
+TARGET_IP = "192.168.56.102" 
+SOURCE_IP = "192.168.56.1"
+TARGET_PORT =22         
 PROCESS_COUNT = 12         # Increased for higher push
 DURATION = 120  
 

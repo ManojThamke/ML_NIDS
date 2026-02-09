@@ -1,9 +1,12 @@
 # =====================================================
 # Phase-2 Realtime Live Packet → Flow → Feature → ML
-# STEP-4: MULTI-MODEL + VOTING + HYBRID + LOGGING
+# FINAL STABLE VERSION (Windows + Wi-Fi + VM Ethernet)
 # =====================================================
 
-from scapy.all import sniff, IP, TCP, UDP
+from scapy.all import (
+    sniff, IP, IPv6, TCP, UDP, ICMP, ARP,
+    get_if_list, conf
+)
 import time
 import pandas as pd
 import argparse
@@ -11,6 +14,7 @@ import signal
 import sys
 import os
 import requests
+import threading
 from datetime import datetime, timezone
 
 from feature_extractor_v2 import FlowStats, REALTIME_FEATURES
@@ -20,9 +24,9 @@ from hybrid_controller import apply_hybrid_logic
 from detector_logger_v2 import log_detection
 from alert_manager import trigger_alert
 
-# ===============================
+# =====================================================
 # BACKEND CONFIG
-# ===============================
+# =====================================================
 
 BACKEND_URL = os.getenv(
     "ML_NIDS_BACKEND_URL",
@@ -30,7 +34,6 @@ BACKEND_URL = os.getenv(
 )
 
 def send_to_backend(payload: dict):
-    """Send detection payload to backend (never crash detector)"""
     try:
         requests.post(
             BACKEND_URL,
@@ -41,101 +44,173 @@ def send_to_backend(payload: dict):
     except Exception:
         pass
 
-# ===============================
+
+# =====================================================
 # CLI ARGUMENTS
-# ===============================
+# =====================================================
 
-parser = argparse.ArgumentParser(
-    description="Realtime Hybrid ML-NIDS (Phase-2)"
-)
+parser = argparse.ArgumentParser(description="Realtime Hybrid ML-NIDS")
 
-parser.add_argument("--iface", type=str, required=True)
+parser.add_argument("--iface", type=str, required=True,
+                    help="Wi-Fi | Ethernet | Ethernet 2 | VirtualBox")
+parser.add_argument("--protocol",
+                    choices=["tcp", "udp", "icmp", "arp", "both", "all"],
+                    default="both")
 parser.add_argument("--models", type=str, default="all")
 parser.add_argument("--threshold", type=float, default=0.5)
 parser.add_argument("--vote", type=int, default=3)
 parser.add_argument("--timeout", type=int, default=10)
-
-# 🔥 NEW: protocol selection (like v1)
-parser.add_argument(
-    "--protocol",
-    choices=["tcp", "udp", "both"],
-    default="both",
-    help="Protocol to monitor (tcp | udp | both)"
-)
-
-parser.add_argument(
-    "--run_mode",
-    choices=["cli", "service"],
-    default="cli",
-    help="cli = verbose, service = backend controlled"
-)
+parser.add_argument("--run_mode", choices=["cli", "service"], default="cli")
 
 args = parser.parse_args()
 
-INTERFACE = args.iface
+USER_IFACE = args.iface.strip()
+PROTOCOL_MODE = args.protocol.lower()
 GLOBAL_THRESHOLD = args.threshold
 VOTE_K = args.vote
 FLOW_TIMEOUT = args.timeout
 RUN_MODE = args.run_mode
-PROTOCOL_MODE = args.protocol
 
 SELECTED_MODELS = None if args.models.lower() == "all" else [
     m.strip() for m in args.models.split(",")
 ]
 
-# ===============================
+# =====================================================
 # FLOW TABLE
-# ===============================
+# =====================================================
 
 FLOW_TABLE = {}
 RUNNING = True
 
-# ===============================
+
+# =====================================================
 # SIGNAL HANDLING
-# ===============================
+# =====================================================
 
 def shutdown_handler(signum, frame):
     global RUNNING
     RUNNING = False
-    if RUN_MODE == "cli":
-        print("\n[INFO] Detector shutting down safely")
+    print("\n[INFO] Detector shutting down safely")
     sys.exit(0)
 
 signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
-# ===============================
-# FLOW HELPERS
-# ===============================
 
-def get_flow_key(pkt):
-    ip = pkt[IP]
-    if TCP in pkt:
-        return (ip.src, ip.dst, pkt[TCP].sport, pkt[TCP].dport, "TCP")
-    elif UDP in pkt:
-        return (ip.src, ip.dst, pkt[UDP].sport, pkt[UDP].dport, "UDP")
+# =====================================================
+# WINDOWS INTERFACE RESOLUTION (CRITICAL)
+# =====================================================
+
+def resolve_windows_iface(user_iface: str):
+    """
+    Convert Windows UI interface name → Scapy/Npcap interface
+    """
+    if os.name != "nt":
+        return user_iface
+
+    user = user_iface.lower()
+
+    for iface in get_if_list():
+        try:
+            meta = conf.ifaces[iface]
+            desc = (meta.description or "").lower()
+
+            # Wi-Fi
+            if user in ["wi-fi", "wifi"]:
+                if "wi-fi" in desc or "wireless" in desc:
+                    return iface
+
+            # Ethernet (Ethernet / Ethernet 2 / LAN)
+            if user.startswith("ethernet"):
+                if any(x in desc for x in ["ethernet", "gbe", "realtek", "intel"]):
+                    return iface
+
+            # VirtualBox Host-Only / VM
+            if any(x in user for x in ["virtualbox", "host-only", "vm"]):
+                if "virtualbox" in desc:
+                    return iface
+
+        except Exception:
+            continue
+
+    raise ValueError(f"Interface '{user_iface}' not found in Scapy/Npcap")
+
+
+def resolve_interfaces(user_iface: str):
+    resolved = []
+    for name in user_iface.split(","):
+        name = name.strip()
+        try:
+            resolved.append(resolve_windows_iface(name))
+        except Exception as e:
+            print(f"[WARN] {e}")
+    return list(set(resolved))
+
+
+# =====================================================
+# FLOW HELPERS
+# =====================================================
+
+def get_ip_layer(pkt):
+    if IP in pkt:
+        return pkt[IP]
+    if IPv6 in pkt:
+        return pkt[IPv6]
     return None
 
+
+def get_flow_key(pkt):
+    ip = get_ip_layer(pkt)
+    if ip is None:
+        return None
+
+    if TCP in pkt:
+        return (ip.src, ip.dst, pkt[TCP].sport, pkt[TCP].dport, "TCP")
+    if UDP in pkt:
+        return (ip.src, ip.dst, pkt[UDP].sport, pkt[UDP].dport, "UDP")
+    if ICMP in pkt:
+        return (ip.src, ip.dst, 0, 0, "ICMP")
+    if ARP in pkt:
+        return (pkt[ARP].psrc, pkt[ARP].pdst, 0, 0, "ARP")
+
+    return None
+
+
 def is_forward(flow_key, pkt):
-    _, _, sport, _, proto = flow_key
-    return pkt[TCP].sport == sport if proto == "TCP" else pkt[UDP].sport == sport
+    proto = flow_key[4]
+    if proto == "TCP":
+        return pkt[TCP].sport == flow_key[2]
+    if proto == "UDP":
+        return pkt[UDP].sport == flow_key[2]
+    return True
 
-# ===============================
-# PROTOCOL FILTER (NEW)
-# ===============================
 
-def build_bpf_filter(protocol_mode: str):
-    if protocol_mode == "tcp":
-        return "tcp"
-    elif protocol_mode == "udp":
-        return "udp"
-    return "tcp or udp"
+# =====================================================
+# APPLICATION PROTOCOL DETECTION
+# =====================================================
 
-# ===============================
+def detect_app_protocol(flow_key):
+    _, _, _, dport, proto = flow_key
+
+    if proto == "TCP":
+        return {
+            80: "HTTP",
+            443: "HTTPS",
+            22: "SSH",
+            21: "FTP"
+        }.get(dport, "OTHER")
+
+    if proto == "UDP" and dport == 53:
+        return "DNS"
+
+    return "OTHER"
+
+
+# =====================================================
 # FLOW FINALIZATION
-# ===============================
+# =====================================================
 
-def process_flow(flow_key, flow):
+def process_flow(flow_key, flow, iface_name):
 
     features = flow.extract_features()
     flow_duration = round(features[1], 6)
@@ -168,7 +243,10 @@ def process_flow(flow_key, flow):
         "destinationIP": flow_key[1],
         "srcPort": flow_key[2],
         "dstPort": flow_key[3],
+
         "protocol": flow_key[4],
+        "appProtocol": detect_app_protocol(flow_key),
+        "interface": iface_name,   # ✅ REQUIRED BY NEW SCHEMA
 
         "finalLabel": vote_result["final_label"],
         "confidence": mean_confidence,
@@ -190,30 +268,32 @@ def process_flow(flow_key, flow):
     send_to_backend(payload)
 
     if RUN_MODE == "cli":
-        print("\n[FLOW RESULT]")
-        print(f"Flow: {flow_key}")
-        print(f"ML Decision: {payload['finalLabel']}")
-        print(f"Hybrid Decision: {payload['hybridLabel']}")
-        print(f"Severity: {payload['severity']}")
-        print(f"Confidence: {round(mean_confidence, 4)}")
-        print(f"Attack Votes: {payload['attackVotes']}")
-        print(f"Flow Duration: {flow_duration}s")
-        print(f"Reason: {payload['hybridReason']}")
-        print("-" * 60)
+        print(
+            f"[FLOW] {flow_key[0]} → {flow_key[1]} | "
+            f"{payload['protocol']}/{payload['appProtocol']} | "
+            f"{payload['finalLabel']} | {round(mean_confidence, 3)}"
+        )
 
-# ===============================
+
+# =====================================================
 # PACKET HANDLER
-# ===============================
+# =====================================================
 
-def on_packet(pkt):
-    if not RUNNING or IP not in pkt:
+def on_packet(pkt, iface_name):
+    if not RUNNING:
         return
 
-    # 🔒 Protocol safety check
-    if PROTOCOL_MODE == "tcp" and TCP not in pkt:
-        return
-    if PROTOCOL_MODE == "udp" and UDP not in pkt:
-        return
+    if PROTOCOL_MODE != "all":
+        if PROTOCOL_MODE == "tcp" and TCP not in pkt:
+            return
+        if PROTOCOL_MODE == "udp" and UDP not in pkt:
+            return
+        if PROTOCOL_MODE == "icmp" and ICMP not in pkt:
+            return
+        if PROTOCOL_MODE == "arp" and ARP not in pkt:
+            return
+        if PROTOCOL_MODE == "both" and not (TCP in pkt or UDP in pkt):
+            return
 
     flow_key = get_flow_key(pkt)
     if flow_key is None:
@@ -227,9 +307,6 @@ def on_packet(pkt):
             "last_seen": now
         }
 
-        if RUN_MODE == "cli":
-            print(f"[NEW FLOW] {flow_key}")
-
     entry = FLOW_TABLE[flow_key]
     entry["last_seen"] = now
 
@@ -238,35 +315,44 @@ def on_packet(pkt):
     else:
         entry["flow"].update_backward(len(pkt))
 
+    # Timeout-based flush (Wi-Fi safe)
     expired = [
         k for k, v in FLOW_TABLE.items()
         if now - v["last_seen"] > FLOW_TIMEOUT
     ]
 
     for k in expired:
-        process_flow(k, FLOW_TABLE[k]["flow"])
+        process_flow(k, FLOW_TABLE[k]["flow"], iface_name)
         del FLOW_TABLE[k]
 
-# ===============================
+
+# =====================================================
 # MAIN
-# ===============================
+# =====================================================
 
 if __name__ == "__main__":
 
-    if RUN_MODE == "cli":
-        print("[INFO] Starting Realtime V2 Detector")
-        print(
-            f"Iface={INTERFACE} | Protocol={PROTOCOL_MODE} | Models={args.models} | "
-            f"Threshold={GLOBAL_THRESHOLD} | VoteK={VOTE_K} | "
-            f"Timeout={FLOW_TIMEOUT}s | Mode={RUN_MODE}"
-        )
-        print("-" * 60)
+    interfaces = resolve_interfaces(USER_IFACE)
 
-    BPF_FILTER = build_bpf_filter(PROTOCOL_MODE)
+    if not interfaces:
+        print("[ERROR] No valid interfaces resolved for Scapy")
+        sys.exit(1)
 
-    sniff(
-        iface=INTERFACE,
-        filter=BPF_FILTER,
-        prn=on_packet,
-        store=False
-    )
+    print("[INFO] Realtime Detector Started")
+    print(f"[INFO] Mode={RUN_MODE} | Protocol={PROTOCOL_MODE}")
+    print(f"[INFO] Scapy Interfaces={interfaces}")
+    print("-" * 60)
+
+    for iface in interfaces:
+        threading.Thread(
+            target=sniff,
+            kwargs={
+                "iface": iface,
+                "prn": lambda pkt, i=iface: on_packet(pkt, i),
+                "store": False
+            },
+            daemon=True
+        ).start()
+
+    while RUNNING:
+        time.sleep(1)

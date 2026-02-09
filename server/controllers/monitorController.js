@@ -20,6 +20,12 @@ const detectorPath = path.join(
 const projectRoot = path.join(__dirname, "..", "..");
 
 /* ======================================================
+   PYTHON EXECUTABLE RESOLUTION
+====================================================== */
+
+const PYTHON_CMD = process.platform === "win32" ? "python" : "python3";
+
+/* ======================================================
    START MONITORING (PHASE-2 SERVICE MODE)
 ====================================================== */
 
@@ -43,12 +49,13 @@ const startMonitoring = async (req, res) => {
 
     if (!settings.interface || settings.interface.trim() === "") {
       return res.status(400).json({
-        message: "Network interface (iface) is required",
+        message: "Network interface is required",
       });
     }
 
     console.log("🚀 Starting Phase-2 Detector (SERVICE MODE)");
-    console.log(settings);
+    console.log("Interface:", settings.interface);
+    console.log("Protocol:", settings.protocol);
 
     /* ================= BUILD ARGUMENTS ================= */
 
@@ -56,9 +63,8 @@ const startMonitoring = async (req, res) => {
       detectorPath,
 
       "--iface",
-      settings.interface,
+      settings.interface.trim(),
 
-      // 🔥 NEW: protocol selection
       "--protocol",
       settings.protocol ?? "both",
 
@@ -75,15 +81,15 @@ const startMonitoring = async (req, res) => {
       String(settings.flowTimeout ?? 10),
 
       "--run_mode",
-      "service"
+      "service",
     ];
 
     console.log("🐍 Python command:");
-    console.log("python", args.join(" "));
+    console.log(PYTHON_CMD, args.join(" "));
 
     /* ================= SPAWN PYTHON ================= */
 
-    monitorProcess = spawn("python", args, {
+    monitorProcess = spawn(PYTHON_CMD, args, {
       cwd: projectRoot,
       shell: false,
     });
@@ -101,8 +107,13 @@ const startMonitoring = async (req, res) => {
       monitorProcess = null;
     });
 
+    monitorProcess.on("error", (err) => {
+      console.error("❌ Failed to start detector:", err);
+      monitorProcess = null;
+    });
+
     return res.json({
-      message: "Phase-2 monitoring started (service mode)",
+      message: "Phase-2 monitoring started successfully",
     });
 
   } catch (err) {
@@ -126,7 +137,7 @@ const stopMonitoring = (req, res) => {
   monitorProcess = null;
 
   res.json({
-    message: "Monitoring stopped",
+    message: "Monitoring stopped successfully",
   });
 };
 

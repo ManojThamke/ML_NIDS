@@ -9,11 +9,12 @@ import {
   CartesianGrid,
   Cell,
   LabelList,
+  Text, // 🔹 Integrated for slanted rendering
 } from "recharts";
 
 /**
  * Enhanced Per-Model Confidence Analytics
- * Features: Dashboard-matched shadows, glowing bars, and theme-adaptive labels.
+ * Fixed: Slanted labels and vertical gap closure for unified forensic density.
  */
 function PerModelAverageConfidence({ data, theme = 'light' }) {
   
@@ -80,7 +81,7 @@ function PerModelAverageConfidence({ data, theme = 'light' }) {
   };
 
   return (
-    <div className={`${containerStyle} rounded-[2.5rem] p-8 h-[380px] flex flex-col transition-all duration-700 animate-in fade-in slide-in-from-bottom-4`}>
+    <div className={`${containerStyle} rounded-[2.5rem] p-8 h-[380px] flex flex-col transition-all duration-700 animate-in fade-in`}>
       
       {/* 🚀 Header Logic */}
       <div className="flex justify-between items-start mb-6">
@@ -100,7 +101,11 @@ function PerModelAverageConfidence({ data, theme = 'light' }) {
       {/* 📊 Chart Matrix */}
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+          <BarChart 
+            data={chartData} 
+            margin={{ top: 10, right: 10, left: -20, bottom: 0 }} // 🛠️ GAP FIX: Vertical space closure
+            barCategoryGap="20%"
+          >
             <CartesianGrid 
               vertical={false} 
               strokeDasharray="4 4" 
@@ -111,17 +116,21 @@ function PerModelAverageConfidence({ data, theme = 'light' }) {
               axisLine={false} 
               tickLine={false}
               interval={0}
+              height={55} // 🛠️ DENSITY FIX: Clearance for slanted labels
               tick={({ x, y, payload }) => (
-                <g transform={`translate(${x},${y + 12})`}>
-                  <text 
-                    textAnchor="middle" 
-                    fill={theme === 'dark' ? "#64748b" : "#94a3b8"} 
-                    fontSize={9} 
+                <g transform={`translate(${x},${y + 4})`}>
+                  <Text
+                    width={60}
+                    textAnchor="end"
+                    verticalAnchor="start"
+                    angle={-45} // 🛠️ COLLISION FIX: Prevents text overlap
+                    fill={theme === 'dark' ? "#64748b" : "#94a3b8"}
+                    fontSize={8.5}
                     fontWeight={800}
                     className="uppercase tracking-tighter italic"
                   >
                     {MODEL_LABELS[payload.value] || payload.value}
-                  </text>
+                  </Text>
                 </g>
               )}
             />
@@ -129,7 +138,7 @@ function PerModelAverageConfidence({ data, theme = 'light' }) {
               domain={[0, yMax]}
               axisLine={false} 
               tickLine={false}
-              tick={{ fontSize: 10, fontWeight: 800, fill: theme === 'dark' ? "#64748b" : "#94a3b8" }}
+              tick={{ fontSize: 9, fontWeight: 800, fill: theme === 'dark' ? "#64748b" : "#94a3b8" }}
               tickFormatter={(v) => `${v}%`}
             />
             <Tooltip 
@@ -138,8 +147,8 @@ function PerModelAverageConfidence({ data, theme = 'light' }) {
             />
             <Bar 
               dataKey="value" 
-              radius={[12, 12, 0, 0]} 
-              barSize={28}
+              radius={[10, 10, 0, 0]} 
+              barSize={32}
               animationDuration={2000}
               animationEasing="ease-out"
             >
@@ -155,10 +164,10 @@ function PerModelAverageConfidence({ data, theme = 'light' }) {
                 dataKey="value" 
                 position="top" 
                 formatter={(v) => `${v}%`} 
-                fontSize={10} 
+                fontSize={9} 
                 fontWeight={900}
                 fill={theme === 'dark' ? "#94a3b8" : "#64748b"}
-                dy={-10}
+                dy={-8}
               />
             </Bar>
           </BarChart>
@@ -166,8 +175,8 @@ function PerModelAverageConfidence({ data, theme = 'light' }) {
       </div>
 
       {/* 📑 Footer Caption */}
-      <div className={`mt-6 pt-4 border-t ${theme === 'dark' ? 'border-slate-800' : 'border-slate-50'}`}>
-        <p className="text-[10px] font-black text-center uppercase tracking-widest opacity-50 italic">
+      <div className={`mt-0 pt-3 border-t ${theme === 'dark' ? 'border-slate-800' : 'border-slate-50'}`}>
+        <p className="text-[10px] font-black text-center uppercase tracking-widest opacity-50 italic leading-none">
           Higher amplitude represents increased ensemble consensus on traffic classification
         </p>
       </div>

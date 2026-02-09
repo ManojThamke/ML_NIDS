@@ -1,8 +1,12 @@
-const { getActiveInterface } = require("../utils/systemInfo");
+const { getSystemInterfaces } = require("../utils/systemInfo");
 
 const getSystemInterface = (req, res) => {
-  const iface = getActiveInterface();
-  res.json({ interface: iface });
+  try {
+    const interfaces = getSystemInterfaces();
+    res.json(interfaces);   // ✅ ARRAY
+  } catch (err) {
+    res.status(500).json([]);
+  }
 };
 
 module.exports = { getSystemInterface };
