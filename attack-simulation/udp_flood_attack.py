@@ -4,8 +4,8 @@ import random
 import time
 
 # --- CONFIGURATION ---
-TARGET_IP = "192.168.56.102"
-TARGET_PORT = 53
+TARGET_IP = "192.168.56.101"
+TARGET_PORT = 445
 PROCESS_COUNT = multiprocessing.cpu_count() # Use ALL your cores
 DURATION = 240 # Longer duration helps ML models aggregate flow data
 
